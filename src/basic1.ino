@@ -4,13 +4,18 @@
 #include <MotorDriver.h>
 #include <NewPing.h>
 #include <SPI.h>
-#include <Adafruit_LSM9DS0.h>
 #include <Adafruit_Sensor.h>
+#include <Adafruit_9DOF.h>
 
 // 
 // HW TODO: 
-// 1) Swap pin 4 and pin 10
 // 2) Maybe use one more sonar instead of two same-axis encoders
+
+// I2C conf
+// I2C device found at address 0x19  !
+// I2C device found at address 0x1E  !
+// I2C device found at address 0x69  ! ! NOTE that Gyro is using non-standard address 0x69 instead of 0x6B
+//  and D3 id instead of D4 or D7
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
@@ -38,15 +43,20 @@ const int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic se
 const int XMCS_PIN  = A5;
 const int GCS_PIN   = A4;
 // Encoders
-const int ENCODER_1_PIN = 10; // used to be 4!
-const int ENCODER_2_PIN = 9;
-const int ENCODER_3_PIN = A3;
-const int ENCODER_4_PIN = A2;
+const int ENCODER_1_PIN = 10; // REAR RIGHT
+const int ENCODER_2_PIN = 9;  // FRONT RIGHT
+const int ENCODER_3_PIN = A3; // FRONT LEFT
+const int ENCODER_4_PIN = A2; // REAR LEFT
 // Rest pins are used for motors: 3,5,6,11; 4,7,8,12; 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Static objects
-Adafruit_LSM9DS0 lsm = Adafruit_LSM9DS0(XMCS_PIN, GCS_PIN);
+Adafruit_9DOF imu = Adafruit_9DOF();
+Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
+Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
+Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
+
+
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_SONAR_DISTANCE); // NewPing setup of pins and maximum distance.
 SoftwareSerial Bluetooth(BLUETOOTH_TX_PIN, BLUETOOTH_RX_PIN);
 ArduinoBlue Phone(Bluetooth); // pass reference of Bluetooth object to ArduinoCommander.
@@ -81,31 +91,21 @@ void p(const char* string) {
 ///////////////////////////////////////////////////////////////////////////////
 void setupIMU()
 {
-  // Try to initialise and warn if we couldn't detect the chip
-  if (!lsm.begin())
-  {
-    p("Oops ... unable to initialize the LSM9DS0. Check your wiring!");
+//gyro.enableAutoRange(true);
+  if (!gyro.begin()) {
+    p("Oops ... unable to initialize the Gyroscope. Check your wiring!");
     while (1);
   }
-  // 1.) Set the accelerometer range
-  lsm.setupAccel(lsm.LSM9DS0_ACCELRANGE_2G);
-  //lsm.setupAccel(lsm.LSM9DS0_ACCELRANGE_4G);
-  //lsm.setupAccel(lsm.LSM9DS0_ACCELRANGE_6G);
-  //lsm.setupAccel(lsm.LSM9DS0_ACCELRANGE_8G);
-  //lsm.setupAccel(lsm.LSM9DS0_ACCELRANGE_16G);
 
-  // 2.) Set the magnetometer sensitivity
-  lsm.setupMag(lsm.LSM9DS0_MAGGAIN_2GAUSS);
-  //lsm.setupMag(lsm.LSM9DS0_MAGGAIN_4GAUSS);
-  //lsm.setupMag(lsm.LSM9DS0_MAGGAIN_8GAUSS);
-  //lsm.setupMag(lsm.LSM9DS0_MAGGAIN_12GAUSS);
 
-  // 3.) Setup the gyroscope
-  lsm.setupGyro(lsm.LSM9DS0_GYROSCALE_245DPS);
-  //lsm.setupGyro(lsm.LSM9DS0_GYROSCALE_500DPS);
-  //lsm.setupGyro(lsm.LSM9DS0_GYROSCALE_2000DPS);
-
-  p("Found LSM9DS0 9DOF");
+  // Try to initialise and warn if we couldn't detect the chip
+  if (!imu.begin() || !accel.begin() || !mag.begin()) { 
+    p("Oops ... unable to initialize the IMU. Check your wiring!");
+    while (1);
+  }
+  
+  
+  p("Found LSM303DLHC and L3GD20 IMU");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -193,37 +193,33 @@ void readEncoders() {
 
 void readIMU() {
  // IMU
-  lsm.read();
-  Serial.print("Accel X: ");
-  Serial.print((int)lsm.accelData.x);
-  Serial.print(" ");
-  Serial.print("Y: ");
-  Serial.print((int)lsm.accelData.y);
-  Serial.print(" ");
-  Serial.print("Z: ");
-  Serial.println((int)lsm.accelData.z);
-  Serial.print(" ");
-  Serial.print("Mag X: ");
-  Serial.print((int)lsm.magData.x);
-  Serial.print(" ");
-  Serial.print("Y: ");
-  Serial.print((int)lsm.magData.y);
-  Serial.print(" ");
-  Serial.print("Z: ");
-  Serial.println((int)lsm.magData.z);
-  Serial.print(" ");
-  Serial.print("Gyro X: ");
-  Serial.print((int)lsm.gyroData.x);
-  Serial.print(" ");
-  Serial.print("Y: ");
-  Serial.print((int)lsm.gyroData.y);
-  Serial.print(" ");
-  Serial.print("Z: ");
-  Serial.println((int)lsm.gyroData.z);
-  Serial.println(" ");
-  Serial.print("Temp: ");
-  Serial.print((int)lsm.temperature);
-  Serial.println(" ");
+sensors_event_t event;
+sensors_vec_t orientation;
+sensors_axis_t axis;
+
+accel.getEvent(&event);
+if (imu.accelGetOrientation(&event, &orientation)) {
+  Serial.print(F("Roll: "));
+  Serial.print(orientation.roll);
+  Serial.print(F("; "));
+  Serial.print(F("Pitch: "));
+  Serial.print(orientation.pitch);
+  Serial.print(F("; "));
+}
+
+mag.getEvent(&event);
+if (imu.magGetOrientation(SENSOR_AXIS_Z, &event, &orientation)) {
+   Serial.print(F("Heading: "));
+  Serial.print(orientation.heading);
+  Serial.print(F("; "));
+}
+
+gyro.getEvent(&event);
+Serial.print(F("GYRO  "));
+Serial.print("X: "); Serial.print(event.gyro.x); Serial.print("  ");
+Serial.print("Y: "); Serial.print(event.gyro.y); Serial.print("  ");
+Serial.print("Z: "); Serial.print(event.gyro.z); Serial.print("  ");Serial.print("rad/s ");  
+Serial.println(""); 
 }
 
 void updateMotors() {
@@ -232,6 +228,7 @@ void updateMotors() {
   {
     prevThrottle = throttle;
     prevSteering = steering;
+    prevPing = Ping;
 
     int corrected = 0;
     if (throttle > CENTER_JOYSTICK)
@@ -279,7 +276,9 @@ void updateMotors() {
 
 void readSonars() {
     Ping = sonar.ping_cm();
-    pf("[SONAR] %d\n", Ping);
+    if (Ping != 0) {
+      pf("[SONAR] %d\n", Ping);
+    }
 }
 
 // Put your main code here, to run repeatedly:

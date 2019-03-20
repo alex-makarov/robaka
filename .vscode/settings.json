@@ -2,5 +2,10 @@
     "terminal.integrated.env.osx": {
         "PATH": "/Users/alex/.platformio/penv/bin:/Users/alex/.platformio/penv:/usr/local/opt/gnu-sed/libexec/gnubin:/opt/local/Library/Frameworks/Python.framework/Versions/Current/bin/:/Users/alex/Library/Android/sdk/tools:/Users/alex/Library/Android/sdk/platform-tools:/Users/alex/.nvm/versions/node/v8.15.0/bin:~/bin:/opt/local/bin:/opt/local/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/go/bin:/usr/local/MacGPG2/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Users/alex/go/bin",
         "PLATFORMIO_CALLER": "vscode"
+    },
+    "files.associations": {
+        "adafruit_sensor.h": "c",
+        "adafruit_lsm303.h": "c",
+        "adafruit_lsm303_u.h": "c"
     }
 }
