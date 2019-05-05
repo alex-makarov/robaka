@@ -16,10 +16,20 @@
 // I2C device found at address 0x1E  !
 // I2C device found at address 0x69  ! ! NOTE that Gyro is using non-standard address 0x69 instead of 0x6B
 //  and D3 id instead of D4 or D7
+//    #define L3GD20_ADDRESS           (0x6B)        // 1101011
+    // #define L3GD20_ADDRESS           (0x69)        // 1101011
+    // #define L3GD20_POLL_TIMEOUT      (100)         // Maximum number of read attempts
+    // // #define L3GD20_ID                (0xD4)
+    // // #define L3GD20H_ID               (0xD7)
+    // #define L3GD20_ID                (0xD3)
+    // #define L3GD20H_ID               (0xD7)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
-#define MOVE_MOTORS 0
+#define MOVE_MOTORS 1
+
+#undef IMU_DEBUG
+//#define IMU_DEBUG
 
 const int MAX_SONAR_DISTANCE  = 50; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 const int SERIAL_SPEED        = 9600;
@@ -27,18 +37,20 @@ const int BLUETOOTH_SPEED     = 9600;
 const int CENTER_JOYSTICK     = 49;
 const int JOYSTICK_DEADZONE   = 5;
 
+//1423
 const int MOTOR_REAR_LEFT   = 1;
-const int MOTOR_REAR_RIGHT  = 2;
-const int MOTOR_FWD_LEFT    = 3;
-const int MOTOR_FWD_RIGHT   = 4;
+const int MOTOR_REAR_RIGHT  = 4;
+const int MOTOR_FWD_LEFT    = 2;
+const int MOTOR_FWD_RIGHT   = 3;
 
 const int BUTTON_STOP = 0;
 const int BUTTON_START = 1;
 
 const int PROXIMITY_THRESHOLD = 15; // cm
-const int TURN_DURATION = 500; // us
-const int BACKWARD_DURATION = 500; // us
-const int DEFAULT_MOTOR_SPEED = 80; // x/255
+const int TURN_DURATION = 2000; // us
+const int BACKWARD_DURATION = 2000; // us
+const int STUCK_THRESHOLD = 500; // us
+const int DEFAULT_MOTOR_SPEED = 200; // x/255
 
 // Pins
 // Bluetooth
@@ -74,6 +86,7 @@ MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-moto
 // Global variables
 const int Encoders[] = {ENCODER_1_PIN, ENCODER_2_PIN, ENCODER_3_PIN, ENCODER_4_PIN};
 int EncoderValues[] = {LOW, LOW, LOW, LOW};
+unsigned long EncoderUpdates[] = {0,0,0,0};
 const int N_Encoders = 4;
 
 int prevThrottle = CENTER_JOYSTICK;
@@ -91,6 +104,14 @@ enum State {
   RightTurn,
   LeftTurn
 } state;
+
+const char *PrintableStates[] = {
+  "STOP",
+  "FORWARD",
+  "BACKWARD",
+  "RIGHT",
+  "LEFT"
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 void pf(const char *fmt, ... ){
@@ -113,7 +134,7 @@ void pphone(const char *fmt, ... ) {
         vsnprintf(buf, 256, fmt, args);
         va_end (args);
 
-        Phone.sendText(String(buf));
+        Phone.sendMessage(String(buf));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,6 +177,7 @@ void setup()
   state = Stop;
 
   p("Setup complete");
+  pphone("READY");
 }
 
 void readPhone()
@@ -215,7 +237,8 @@ void readEncoders() {
 
     if (val != EncoderValues[i])
     {
-      pf("Encoder %d is moving\n", i);
+      pf("%d is moving\n", i);
+      EncoderUpdates[i] = millis();
     }
 
     EncoderValues[i] = val;
@@ -228,20 +251,37 @@ sensors_event_t event;
 sensors_vec_t orientation;
 //sensors_axis_t axis;
 
+#ifdef IMU_DEBUG
+pf ("IMU [roll, pitch, heading, x/y/z] [");
+#endif
+
 accel.getEvent(&event);
 if (imu.accelGetOrientation(&event, &orientation)) {
-  pf("Roll %f; Pitch %f; ", orientation.roll, orientation.pitch);
+  #ifdef IMU_DEBUG
+  Serial.print(orientation.roll);
+  Serial.print(", ");
+  Serial.print(orientation.pitch);
+  Serial.print(", ");
+  #endif
 }
 
 mag.getEvent(&event);
 if (imu.magGetOrientation(SENSOR_AXIS_Z, &event, &orientation)) {
-  pf("Heading %f; ", orientation.heading);
+  #ifdef IMU_DEBUG
+  Serial.print(orientation.heading);
+  Serial.print(", ");
+  #endif
 }
 
 gyro.getEvent(&event);
-pf("Gyro x: %f, y: %f, z: %f rad/s", event.gyro.x, event.gyro.y, event.gyro.z);
-
-pf("\n");
+#ifdef IMU_DEBUG
+Serial.print(event.gyro.x);
+Serial.print("/");
+Serial.print(event.gyro.y);
+Serial.print("/");
+Serial.print(event.gyro.z);
+pf("]\n");
+#endif
 }
 
 void updateMotors() {
@@ -301,7 +341,7 @@ void updateMotors() {
 void readSonars() {
     Ping = sonar.ping_cm();
     if (Ping != 0) {
-      pf("[SONAR] %d\n", Ping);
+//      pf("[SONAR] %d\n", Ping);
     }
 }
 
@@ -325,17 +365,23 @@ void step() {
   State prevState = state;
 
   switch (state) {
-
     case Forward:
-      if (Ping < PROXIMITY_THRESHOLD) {
+      if (Ping < PROXIMITY_THRESHOLD && Ping > 0) {
+        pf("Ping %d", Ping);
         state = Backward;
         moveStarted = millis();
       }
+
+      if (isStuck()) {
+        state = Backward;
+        moveStarted = millis();
+      }
+
       break;
 
     case Backward:
       if (millis() - moveStarted >= BACKWARD_DURATION) {
-        state = random(0,1) ? RightTurn : LeftTurn;
+        state = random(0,2) > 0 ? RightTurn : LeftTurn;
         moveStarted = millis();
       }
       break;
@@ -352,7 +398,11 @@ void step() {
       if (button == BUTTON_START) {
         state = Forward;
         moveStarted = millis();
+        for (int i = 0; i < N_Encoders; i++) {
+          EncoderUpdates[i] = millis();
+        }
       }
+
       break;
 
     default: 
@@ -364,8 +414,10 @@ void step() {
     moveStarted = millis();
   }
 
-  pf("State: %d -> %d\n", prevState, state);
-  pphone("State: %d -> %d", prevState, state);
+  if (prevState != state) {
+    pf("State: %s -> %s\n", PrintableStates[prevState], PrintableStates[state]);
+    pphone("State: %s -> %s", PrintableStates[prevState], PrintableStates[state]);
+  }
 }
 
 void updateMotorsOnStep() {
@@ -377,41 +429,65 @@ void updateMotorsOnStep() {
 
   switch (state) {
     case Forward:
-      m.motor(MOTOR_FWD_LEFT, FORWARD, speed);
-      m.motor(MOTOR_REAR_LEFT, FORWARD, speed);
-      m.motor(MOTOR_FWD_RIGHT, FORWARD, speed);
-      m.motor(MOTOR_REAR_RIGHT, FORWARD, speed);
+      moveMotor(MOTOR_FWD_LEFT, FORWARD, speed);
+      moveMotor(MOTOR_REAR_LEFT, FORWARD, speed);
+      moveMotor(MOTOR_FWD_RIGHT, FORWARD, speed);
+      moveMotor(MOTOR_REAR_RIGHT, FORWARD, speed);
       break;
 
     case Backward:
-      m.motor(MOTOR_FWD_LEFT, BACKWARD, speed);
-      m.motor(MOTOR_REAR_LEFT, BACKWARD, speed);
-      m.motor(MOTOR_FWD_RIGHT, BACKWARD, speed);
-      m.motor(MOTOR_REAR_RIGHT, BACKWARD, speed);
+      moveMotor(MOTOR_FWD_LEFT, BACKWARD, speed);
+      moveMotor(MOTOR_REAR_LEFT, BACKWARD, speed);
+      moveMotor(MOTOR_FWD_RIGHT, BACKWARD, speed);
+      moveMotor(MOTOR_REAR_RIGHT, BACKWARD, speed);
       break;
 
     case RightTurn:
-      m.motor(MOTOR_FWD_LEFT, FORWARD, speed);
-      m.motor(MOTOR_REAR_LEFT, FORWARD, speed);
-      m.motor(MOTOR_FWD_RIGHT, BACKWARD, speed);
-      m.motor(MOTOR_REAR_RIGHT, BACKWARD, speed);
+      moveMotor(MOTOR_FWD_LEFT, FORWARD, speed);
+      moveMotor(MOTOR_REAR_LEFT, FORWARD, speed);
+      moveMotor(MOTOR_FWD_RIGHT, BACKWARD, speed);
+      moveMotor(MOTOR_REAR_RIGHT, BACKWARD, speed);
       break;
 
     case LeftTurn:
-      m.motor(MOTOR_FWD_LEFT, BACKWARD, speed);
-      m.motor(MOTOR_REAR_LEFT, BACKWARD, speed);
-      m.motor(MOTOR_FWD_RIGHT, FORWARD, speed);
-      m.motor(MOTOR_REAR_RIGHT, FORWARD, speed);
+      moveMotor(MOTOR_FWD_LEFT, BACKWARD, speed);
+      moveMotor(MOTOR_REAR_LEFT, BACKWARD, speed);
+      moveMotor(MOTOR_FWD_RIGHT, FORWARD, speed);
+      moveMotor(MOTOR_REAR_RIGHT, FORWARD, speed);
       break;
 
     case Stop:
-      m.motor(MOTOR_FWD_LEFT, FORWARD, 0);
-      m.motor(MOTOR_REAR_LEFT, FORWARD, 0);
-      m.motor(MOTOR_FWD_RIGHT, FORWARD, 0);
-      m.motor(MOTOR_REAR_RIGHT, FORWARD, 0);
+      moveMotor(MOTOR_FWD_LEFT, FORWARD, 0);
+      moveMotor(MOTOR_REAR_LEFT, FORWARD, 0);
+      moveMotor(MOTOR_FWD_RIGHT, FORWARD, 0);
+      moveMotor(MOTOR_REAR_RIGHT, FORWARD, 0);
       break;
 
     default:
     break;
   }
+}
+
+void moveMotor(int motorId, int direction, int speed) {
+  switch(motorId) {
+    case MOTOR_REAR_RIGHT:
+    case MOTOR_FWD_RIGHT:
+      m.motor(motorId, direction == FORWARD ? BACKWARD : FORWARD, speed);
+      break;
+    default:
+      m.motor(motorId, direction, speed);
+      break;
+  }
+}
+
+bool isStuck() {
+  unsigned long now = millis();
+  int wheelsStuck = 0;
+
+  for (int i = 0; i < N_Encoders; i++) {
+    if (now - EncoderUpdates[i] >= STUCK_THRESHOLD)
+      ++wheelsStuck;
+  }  
+
+  return wheelsStuck > 3;
 }
