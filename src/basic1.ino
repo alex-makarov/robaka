@@ -32,6 +32,14 @@ const int MOTOR_REAR_RIGHT  = 2;
 const int MOTOR_FWD_LEFT    = 3;
 const int MOTOR_FWD_RIGHT   = 4;
 
+const int BUTTON_STOP = 0;
+const int BUTTON_START = 1;
+
+const int PROXIMITY_THRESHOLD = 15; // cm
+const int TURN_DURATION = 500; // us
+const int BACKWARD_DURATION = 500; // us
+const int DEFAULT_MOTOR_SPEED = 80; // x/255
+
 // Pins
 // Bluetooth
 const int BLUETOOTH_TX_PIN = 13;
@@ -74,18 +82,38 @@ int prevPing = 0;
 int Ping = 0;
 int throttle, steering, sliderVal, button, sliderId;
 
+unsigned long moveStarted = 0;
+
+enum State {
+  Stop = 0,
+  Forward,
+  Backward,
+  RightTurn,
+  LeftTurn
+} state;
+
 ///////////////////////////////////////////////////////////////////////////////
 void pf(const char *fmt, ... ){
-        char buf[128]; // resulting string limited to 128 chars
+        char buf[256]; // resulting string limited to 128 chars
         va_list args;
         va_start (args, fmt );
-        vsnprintf(buf, 128, fmt, args);
+        vsnprintf(buf, 256, fmt, args);
         va_end (args);
         Serial.print(buf);
 }
 
 void p(const char* string) {
   Serial.println(string);
+}
+
+void pphone(const char *fmt, ... ) {
+        char buf[256]; // resulting string limited to 128 chars
+        va_list args;
+        va_start (args, fmt );
+        vsnprintf(buf, 256, fmt, args);
+        va_end (args);
+
+        Phone.sendText(String(buf));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -124,6 +152,9 @@ void setup()
   }
 
   setupIMU();
+
+  state = Stop;
+
   p("Setup complete");
 }
 
@@ -195,34 +226,26 @@ void readIMU() {
  // IMU
 sensors_event_t event;
 sensors_vec_t orientation;
-sensors_axis_t axis;
+//sensors_axis_t axis;
 
 accel.getEvent(&event);
 if (imu.accelGetOrientation(&event, &orientation)) {
-  Serial.print(F("Roll: "));
-  Serial.print(orientation.roll);
-  Serial.print(F("; "));
-  Serial.print(F("Pitch: "));
-  Serial.print(orientation.pitch);
-  Serial.print(F("; "));
+  pf("Roll %f; Pitch %f; ", orientation.roll, orientation.pitch);
 }
 
 mag.getEvent(&event);
 if (imu.magGetOrientation(SENSOR_AXIS_Z, &event, &orientation)) {
-   Serial.print(F("Heading: "));
-  Serial.print(orientation.heading);
-  Serial.print(F("; "));
+  pf("Heading %f; ", orientation.heading);
 }
 
 gyro.getEvent(&event);
-Serial.print(F("GYRO  "));
-Serial.print("X: "); Serial.print(event.gyro.x); Serial.print("  ");
-Serial.print("Y: "); Serial.print(event.gyro.y); Serial.print("  ");
-Serial.print("Z: "); Serial.print(event.gyro.z); Serial.print("  ");Serial.print("rad/s ");  
-Serial.println(""); 
+pf("Gyro x: %f, y: %f, z: %f rad/s", event.gyro.x, event.gyro.y, event.gyro.z);
+
+pf("\n");
 }
 
 void updateMotors() {
+#if 0  
  // Display throttle and steering data if steering or throttle value is changed
   if (prevThrottle != throttle || prevSteering != steering || prevPing != Ping)
   {
@@ -272,6 +295,7 @@ void updateMotors() {
     }
 #endif
   }
+#endif // 0
 }
 
 void readSonars() {
@@ -291,5 +315,103 @@ void loop()
   readEncoders();
   readIMU();
 
-  updateMotors();  
+//  updateMotors();  
+  step();
+  updateMotorsOnStep();
+}
+
+void step() {
+
+  State prevState = state;
+
+  switch (state) {
+
+    case Forward:
+      if (Ping < PROXIMITY_THRESHOLD) {
+        state = Backward;
+        moveStarted = millis();
+      }
+      break;
+
+    case Backward:
+      if (millis() - moveStarted >= BACKWARD_DURATION) {
+        state = random(0,1) ? RightTurn : LeftTurn;
+        moveStarted = millis();
+      }
+      break;
+
+    case RightTurn:
+    case LeftTurn:
+      if (millis() - moveStarted >= TURN_DURATION) {
+        state = Forward;
+        moveStarted = millis();
+      }
+      break;
+
+    case Stop:
+      if (button == BUTTON_START) {
+        state = Forward;
+        moveStarted = millis();
+      }
+      break;
+
+    default: 
+      break;
+  }
+
+  if (button == BUTTON_STOP) {
+    state = Stop;
+    moveStarted = millis();
+  }
+
+  pf("State: %d -> %d\n", prevState, state);
+  pphone("State: %d -> %d", prevState, state);
+}
+
+void updateMotorsOnStep() {
+#if (MOVE_MOTORS == 0) 
+  return;
+#endif
+
+  int speed = DEFAULT_MOTOR_SPEED;
+
+  switch (state) {
+    case Forward:
+      m.motor(MOTOR_FWD_LEFT, FORWARD, speed);
+      m.motor(MOTOR_REAR_LEFT, FORWARD, speed);
+      m.motor(MOTOR_FWD_RIGHT, FORWARD, speed);
+      m.motor(MOTOR_REAR_RIGHT, FORWARD, speed);
+      break;
+
+    case Backward:
+      m.motor(MOTOR_FWD_LEFT, BACKWARD, speed);
+      m.motor(MOTOR_REAR_LEFT, BACKWARD, speed);
+      m.motor(MOTOR_FWD_RIGHT, BACKWARD, speed);
+      m.motor(MOTOR_REAR_RIGHT, BACKWARD, speed);
+      break;
+
+    case RightTurn:
+      m.motor(MOTOR_FWD_LEFT, FORWARD, speed);
+      m.motor(MOTOR_REAR_LEFT, FORWARD, speed);
+      m.motor(MOTOR_FWD_RIGHT, BACKWARD, speed);
+      m.motor(MOTOR_REAR_RIGHT, BACKWARD, speed);
+      break;
+
+    case LeftTurn:
+      m.motor(MOTOR_FWD_LEFT, BACKWARD, speed);
+      m.motor(MOTOR_REAR_LEFT, BACKWARD, speed);
+      m.motor(MOTOR_FWD_RIGHT, FORWARD, speed);
+      m.motor(MOTOR_REAR_RIGHT, FORWARD, speed);
+      break;
+
+    case Stop:
+      m.motor(MOTOR_FWD_LEFT, FORWARD, 0);
+      m.motor(MOTOR_REAR_LEFT, FORWARD, 0);
+      m.motor(MOTOR_FWD_RIGHT, FORWARD, 0);
+      m.motor(MOTOR_REAR_RIGHT, FORWARD, 0);
+      break;
+
+    default:
+    break;
+  }
 }
