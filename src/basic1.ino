@@ -31,11 +31,9 @@
 #undef IMU_DEBUG
 //#define IMU_DEBUG
 
-const int MAX_SONAR_DISTANCE  = 50; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+const int MAX_SONAR_DISTANCE  = 300; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 const int SERIAL_SPEED        = 9600;
 const int BLUETOOTH_SPEED     = 9600;
-const int CENTER_JOYSTICK     = 49;
-const int JOYSTICK_DEADZONE   = 5;
 
 //1423
 const int MOTOR_REAR_LEFT   = 1;
@@ -46,11 +44,13 @@ const int MOTOR_FWD_RIGHT   = 3;
 const int BUTTON_STOP = 0;
 const int BUTTON_START = 1;
 
-const int PROXIMITY_THRESHOLD = 15; // cm
-const int TURN_DURATION = 2000; // us
+const int PROXIMITY_THRESHOLD = 20; // cm
 const int BACKWARD_DURATION = 2000; // us
-const int STUCK_THRESHOLD = 500; // us
-const int DEFAULT_MOTOR_SPEED = 200; // x/255
+const int MAX_TURN_DURATION = 5000; // us
+const int STUCK_UPDATE_THRESHOLD = 500; // us
+const int STUCK_DECISION_THRESHOLD = 1000; // us
+const int DEFAULT_MOTOR_SPEED = 255; // x/255
+const int DIVERSION_HEADING = 90; // degrees; how much to turn when faced an obstacle
 
 // Pins
 // Bluetooth
@@ -76,7 +76,6 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 
-
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_SONAR_DISTANCE); // NewPing setup of pins and maximum distance.
 SoftwareSerial Bluetooth(BLUETOOTH_TX_PIN, BLUETOOTH_RX_PIN);
 ArduinoBlue Phone(Bluetooth); // pass reference of Bluetooth object to ArduinoCommander.
@@ -89,13 +88,14 @@ int EncoderValues[] = {LOW, LOW, LOW, LOW};
 unsigned long EncoderUpdates[] = {0,0,0,0};
 const int N_Encoders = 4;
 
-int prevThrottle = CENTER_JOYSTICK;
-int prevSteering = CENTER_JOYSTICK;
-int prevPing = 0;
-int Ping = 0;
-int throttle, steering, sliderVal, button, sliderId;
+int sliderVal, button, sliderId;
 
+int Ping = 0;
 unsigned long moveStarted = 0;
+unsigned long stuckSince = 0;
+int headingOnStart = 0;
+int Heading;
+int Throttle = DEFAULT_MOTOR_SPEED;
 
 enum State {
   Stop = 0,
@@ -146,14 +146,12 @@ void setupIMU()
     while (1);
   }
 
-
   // Try to initialise and warn if we couldn't detect the chip
   if (!imu.begin() || !accel.begin() || !mag.begin()) { 
     p("Oops ... unable to initialize the IMU. Check your wiring!");
     while (1);
   }
-  
-  
+    
   p("Found LSM303DLHC and L3GD20 IMU");
 }
 
@@ -162,18 +160,16 @@ void setupIMU()
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
-  p("Hello");
+  p("Hello I am Robaka. Gav.");
 
   Bluetooth.begin(BLUETOOTH_SPEED);
 
   // Init pins for encoders
-  for (int i = 0; i < N_Encoders; i++)
-  {
+  for (int i = 0; i < N_Encoders; i++) {
     pinMode(Encoders[i], INPUT);
   }
 
   setupIMU();
-
   state = Stop;
 
   p("Setup complete");
@@ -189,15 +185,9 @@ void readPhone()
   // After it returns the latest data, empty string "" is sent in subsequent.
   // calls until text data is sent again.
   String str = Phone.getText();
-  if (str != "")
-  {
+  if (str != "") {
     p(str.c_str());
   }
-
-  // Throttle and steering values go from 0 to 99.
-  // When throttle and steering values are at 99/2 = 49, the joystick is at center.
-  throttle = Phone.getThrottle();
-  steering = Phone.getSteering();
 
   // ID of the slider moved.
   sliderId = Phone.getSliderId();
@@ -206,15 +196,14 @@ void readPhone()
   sliderVal = Phone.getSliderVal();
 
   // Display button data whenever its pressed.
-  if (button != -1)
-  {
+  if (button != -1) {
     pf("Button %d\n", button);
   }
 
   // Display slider data when slider moves
-  if (sliderId != -1)
-  {
+  if (sliderId != -1) {
     pf("Slider[%d]: %d\n", sliderId, sliderVal);
+    Throttle = map(sliderVal, 0, 200, 0, 255);
   }
 }
 
@@ -271,6 +260,7 @@ if (imu.magGetOrientation(SENSOR_AXIS_Z, &event, &orientation)) {
   Serial.print(orientation.heading);
   Serial.print(", ");
   #endif
+  Heading = orientation.heading;
 }
 
 gyro.getEvent(&event);
@@ -282,60 +272,6 @@ Serial.print("/");
 Serial.print(event.gyro.z);
 pf("]\n");
 #endif
-}
-
-void updateMotors() {
-#if 0  
- // Display throttle and steering data if steering or throttle value is changed
-  if (prevThrottle != throttle || prevSteering != steering || prevPing != Ping)
-  {
-    prevThrottle = throttle;
-    prevSteering = steering;
-    prevPing = Ping;
-
-    int corrected = 0;
-    if (throttle > CENTER_JOYSTICK)
-    {
-      corrected = (throttle - CENTER_JOYSTICK) * 5;
-    }
-    else if (throttle < CENTER_JOYSTICK)
-    {
-      corrected = (CENTER_JOYSTICK - throttle) * 5;
-    }
-
-    int direction = throttle > CENTER_JOYSTICK ? BACKWARD : FORWARD;
-    if ((Ping >= 1 && Ping <= 15 && direction == BACKWARD) || throttle == CENTER_JOYSTICK)
-    {
-      corrected = 0;
-    }
-
-    pf("Throttle %d, steering %d, corrected %d, direction %d\n", throttle, steering, corrected, direction);
-
-#ifdef MOVE_MOTORS
-    if (steering > CENTER_JOYSTICK + JOYSTICK_DEADZONE)
-    {
-      m.motor(MOTOR_FWD_LEFT, direction, corrected);
-      m.motor(MOTOR_REAR_LEFT, direction, corrected);
-      m.motor(MOTOR_FWD_RIGHT, direction, 0);
-      m.motor(MOTOR_REAR_RIGHT, direction, 0);
-    }
-    else if (steering < CENTER_JOYSTICK - JOYSTICK_DEADZONE)
-    {
-      m.motor(MOTOR_FWD_RIGHT, direction, corrected);
-      m.motor(MOTOR_REAR_RIGHT, direction, corrected);
-      m.motor(MOTOR_FWD_LEFT, direction, 0);
-      m.motor(MOTOR_REAR_LEFT, direction, 0);
-    }
-    else
-    {
-      m.motor(MOTOR_FWD_RIGHT, direction, corrected);
-      m.motor(MOTOR_REAR_RIGHT, direction, corrected);
-      m.motor(MOTOR_FWD_LEFT, direction, corrected);
-      m.motor(MOTOR_REAR_LEFT, direction, corrected);
-    }
-#endif
-  }
-#endif // 0
 }
 
 void readSonars() {
@@ -355,7 +291,6 @@ void loop()
   readEncoders();
   readIMU();
 
-//  updateMotors();  
   step();
   updateMotorsOnStep();
 }
@@ -382,16 +317,41 @@ void step() {
     case Backward:
       if (millis() - moveStarted >= BACKWARD_DURATION) {
         state = random(0,2) > 0 ? RightTurn : LeftTurn;
+        headingOnStart = Heading;
         moveStarted = millis();
+        pf("Starting turn\n");
       }
       break;
 
     case RightTurn:
-    case LeftTurn:
-      if (millis() - moveStarted >= TURN_DURATION) {
+    {
+    int lowThreshold = (headingOnStart + DIVERSION_HEADING - 15) % 360;
+    int highThreshold = (headingOnStart + DIVERSION_HEADING + 15) % 360;
+      if ((Heading >= lowThreshold && Heading <= highThreshold)
+        || millis() - moveStarted >= MAX_TURN_DURATION) {
+
+          pf("RT: Heading %d, headingOnStart %d, tdiff=%d\n", Heading, headingOnStart,millis() - moveStarted);
+
         state = Forward;
         moveStarted = millis();
       }
+    }
+      break;
+
+    case LeftTurn:
+    {
+      int lowThreshold = (headingOnStart - DIVERSION_HEADING - 15) % 360;
+      int highThreshold = (headingOnStart - DIVERSION_HEADING + 15) % 360;
+
+      if ((Heading >= lowThreshold && Heading <= highThreshold)
+           || millis() - moveStarted >= MAX_TURN_DURATION) {
+             Serial.println(Heading);
+        pf("LT: Heading %d, headingOnStart %d, tdiff=%d\n", Heading, headingOnStart,millis() - moveStarted);
+
+        state = Forward;
+        moveStarted = millis();
+      }
+    }
       break;
 
     case Stop:
@@ -425,7 +385,7 @@ void updateMotorsOnStep() {
   return;
 #endif
 
-  int speed = DEFAULT_MOTOR_SPEED;
+  int speed = Throttle;
 
   switch (state) {
     case Forward:
@@ -469,6 +429,7 @@ void updateMotorsOnStep() {
 }
 
 void moveMotor(int motorId, int direction, int speed) {
+  // Mapping according to motor orientation in the chassis
   switch(motorId) {
     case MOTOR_REAR_RIGHT:
     case MOTOR_FWD_RIGHT:
@@ -485,9 +446,17 @@ bool isStuck() {
   int wheelsStuck = 0;
 
   for (int i = 0; i < N_Encoders; i++) {
-    if (now - EncoderUpdates[i] >= STUCK_THRESHOLD)
+    if (now - EncoderUpdates[i] >= STUCK_UPDATE_THRESHOLD)
       ++wheelsStuck;
   }  
 
-  return wheelsStuck > 3;
+  bool stuck = wheelsStuck > 2;
+
+  if (stuck && stuckSince == 0) {
+    stuckSince = now;
+  } else if (!stuck) {
+    stuckSince = 0;
+  }
+
+  return stuck && now - stuckSince >= STUCK_DECISION_THRESHOLD;
 }
