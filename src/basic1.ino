@@ -45,7 +45,7 @@ const int BUTTON_STOP = 0;
 const int BUTTON_START = 1;
 
 const int PROXIMITY_THRESHOLD = 20; // cm
-const int BACKWARD_DURATION = 2000; // us
+const int BACKWARD_DURATION = 1000; // us
 const int MAX_TURN_DURATION = 5000; // us
 const int STUCK_UPDATE_THRESHOLD = 500; // us
 const int STUCK_DECISION_THRESHOLD = 1000; // us
@@ -94,7 +94,8 @@ int Ping = 0;
 unsigned long moveStarted = 0;
 unsigned long stuckSince = 0;
 int headingOnStart = 0;
-int Heading;
+int Heading = 0;
+int turnProgress = 0;
 int Throttle = DEFAULT_MOTOR_SPEED;
 
 enum State {
@@ -226,7 +227,7 @@ void readEncoders() {
 
     if (val != EncoderValues[i])
     {
-      pf("%d is moving\n", i);
+//      pf("%d is moving\n", i);
       EncoderUpdates[i] = millis();
     }
 
@@ -319,18 +320,23 @@ void step() {
         state = random(0,2) > 0 ? RightTurn : LeftTurn;
         headingOnStart = Heading;
         moveStarted = millis();
+        turnProgress = 0;
         pf("Starting turn\n");
       }
       break;
 
     case RightTurn:
     {
-    int lowThreshold = (headingOnStart + DIVERSION_HEADING - 15) % 360;
-    int highThreshold = (headingOnStart + DIVERSION_HEADING + 15) % 360;
-      if ((Heading >= lowThreshold && Heading <= highThreshold)
+      turnProgress = ((360+Heading)-headingOnStart) % 360;
+
+      // Ignore turn in the wrong direction -- happens at the early stage of the turn.
+      if (turnProgress > 180) 
+        break;
+
+      if (turnProgress >= DIVERSION_HEADING
         || millis() - moveStarted >= MAX_TURN_DURATION) {
 
-          pf("RT: Heading %d, headingOnStart %d, tdiff=%d\n", Heading, headingOnStart,millis() - moveStarted);
+          pf("RT, TP %d, Heading %d, headingOnStart %d, tdiff=%d\n", turnProgress, Heading, headingOnStart,millis() - moveStarted);
 
         state = Forward;
         moveStarted = millis();
@@ -340,13 +346,16 @@ void step() {
 
     case LeftTurn:
     {
-      int lowThreshold = (headingOnStart - DIVERSION_HEADING - 15) % 360;
-      int highThreshold = (headingOnStart - DIVERSION_HEADING + 15) % 360;
+      turnProgress = ((360+headingOnStart)-Heading) % 360;
 
-      if ((Heading >= lowThreshold && Heading <= highThreshold)
+      // Ignore turn in the wrong direction -- happens at the early stage of the turn
+      if (turnProgress > 180) 
+        break;
+
+      if (turnProgress >= DIVERSION_HEADING
            || millis() - moveStarted >= MAX_TURN_DURATION) {
              Serial.println(Heading);
-        pf("LT: Heading %d, headingOnStart %d, tdiff=%d\n", Heading, headingOnStart,millis() - moveStarted);
+        pf("LT, TP %d, Heading %d, headingOnStart %d, tdiff=%d\n", turnProgress, Heading, headingOnStart,millis() - moveStarted);
 
         state = Forward;
         moveStarted = millis();
