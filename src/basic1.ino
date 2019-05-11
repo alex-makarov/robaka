@@ -24,9 +24,20 @@
     // #define L3GD20_ID                (0xD3)
     // #define L3GD20H_ID               (0xD7)
 
+// Encoder and wheel parameters. Motors are called "TT Motors"
+// Encoder: 20 slots
+// Wheel: 65x27mm (65=diameter), 210mm circle length
+// 20 slots, 40 state changes per full revolution
+// 40 state changes = 210mm traveled
+// 1 state change = (210 / 40) = 5.25mm
+// 100 state changes = 2.5 full revolutions = 52cm
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
 #define MOVE_MOTORS 1
+
+#define DEBUG_ENCODERS_COUNT 20
 
 #undef IMU_DEBUG
 //#define IMU_DEBUG
@@ -86,6 +97,7 @@ MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-moto
 const int Encoders[] = {ENCODER_1_PIN, ENCODER_2_PIN, ENCODER_3_PIN, ENCODER_4_PIN};
 int EncoderValues[] = {LOW, LOW, LOW, LOW};
 unsigned long EncoderUpdates[] = {0,0,0,0};
+unsigned long EncoderCounts[] = {0,0,0,0};
 const int N_Encoders = 4;
 
 int sliderVal, button, sliderId;
@@ -97,6 +109,9 @@ int headingOnStart = 0;
 int Heading = 0;
 int turnProgress = 0;
 int Throttle = DEFAULT_MOTOR_SPEED;
+
+//FIXME
+bool firstEncoderLoop = true;
 
 enum State {
   Stop = 0,
@@ -168,6 +183,7 @@ void setup()
   // Init pins for encoders
   for (int i = 0; i < N_Encoders; i++) {
     pinMode(Encoders[i], INPUT);
+    EncoderValues[i] = digitalRead(Encoders[i]);
   }
 
   setupIMU();
@@ -221,17 +237,18 @@ void sendSerialToPhone() {
 }
 
 void readEncoders() {
-  for (int i = 0; i < N_Encoders; i++)
-  {
-    int val = digitalRead(Encoders[i]);
+  const unsigned long now = millis();
+  int input = 0;
 
-    if (val != EncoderValues[i])
-    {
-//      pf("%d is moving\n", i);
-      EncoderUpdates[i] = millis();
+  for (int i = 0; i < N_Encoders; i++) {
+    input = digitalRead(Encoders[i]);
+    if (input != EncoderValues[i]) {
+      EncoderUpdates[i] = now;
+      if (state == Forward || state == Backward) {
+        EncoderCounts[i] += 1;
+      }
     }
-
-    EncoderValues[i] = val;
+    EncoderValues[i] = input;
   }
 }
 
@@ -283,17 +300,35 @@ void readSonars() {
 }
 
 // Put your main code here, to run repeatedly:
-void loop()
-{
+void loop() {
+  printState();
+
+  State prevState = state;
+  int prevThrottle = Throttle;
+
   readPhone();
-  sendSerialToPhone();
+//  sendSerialToPhone();
 
   readSonars();
   readEncoders();
   readIMU();
 
+  //REMOVEME
+  if (state == Forward) {
+    unsigned long avg = (EncoderCounts[0] + EncoderCounts[1] + EncoderCounts[2] + EncoderCounts[3])/4;
+    if (avg >= 200) {
+      state = Stop;
+      EncoderCounts[0] = EncoderCounts[1] = EncoderCounts[2] = EncoderCounts[3] = 0;
+    }
+  }
+
+
   step();
-  updateMotorsOnStep();
+  if (state != prevState || Throttle != prevThrottle) {
+    updateMotorsOnStep();
+  }
+
+
 }
 
 void step() {
@@ -384,8 +419,8 @@ void step() {
   }
 
   if (prevState != state) {
-    pf("State: %s -> %s\n", PrintableStates[prevState], PrintableStates[state]);
-    pphone("State: %s -> %s", PrintableStates[prevState], PrintableStates[state]);
+//    pf("State: %s -> %s\n", PrintableStates[prevState], PrintableStates[state]);
+//    pphone("State: %s -> %s", PrintableStates[prevState], PrintableStates[state]);
   }
 }
 
@@ -468,4 +503,8 @@ bool isStuck() {
   }
 
   return stuck && now - stuckSince >= STUCK_DECISION_THRESHOLD;
+}
+
+void printState() {
+//  pf ("E: [%lu %lu %lu %lu]\n", EncoderCounts[0], EncoderCounts[1], EncoderCounts[2], EncoderCounts[3]);
 }
