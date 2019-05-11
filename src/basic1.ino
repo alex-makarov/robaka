@@ -26,18 +26,17 @@
 
 // Encoder and wheel parameters. Motors are called "TT Motors"
 // Encoder: 20 slots
-// Wheel: 65x27mm (65=diameter), 210mm circle length
+// Wheel: 65x27mm (65=diameter), 204mm circle length
 // 20 slots, 40 state changes per full revolution
-// 40 state changes = 210mm traveled
-// 1 state change = (210 / 40) = 5.25mm
-// 100 state changes = 2.5 full revolutions = 52cm
+// 40 state changes = 204mm traveled
+// 1 state change = (204 / 40) = 5mm (actually 5.1)
+// 100 state changes = 2.5 full revolutions = 50cm
+// 5 full revolutions = 1m
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
 #define MOVE_MOTORS 1
-
-#define DEBUG_ENCODERS_COUNT 20
 
 #undef IMU_DEBUG
 //#define IMU_DEBUG
@@ -66,7 +65,7 @@ const int DIVERSION_HEADING = 90; // degrees; how much to turn when faced an obs
 // Pins
 // Bluetooth
 const int BLUETOOTH_TX_PIN = 13;
-const int BLUETOOTH_RX_PIN = 2;
+const int BLUETOOTH_RX_PIN = A2;
 // Echo sonar
 const int TRIGGER_PIN = A1; // Arduino pin tied to trigger pin on the ultrasonic sensor.
 const int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic sensor.
@@ -74,11 +73,17 @@ const int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic se
 const int XMCS_PIN  = A5;
 const int GCS_PIN   = A4;
 // Encoders
-const int ENCODER_1_PIN = 10; // REAR RIGHT
+const int ENCODER_1_PIN = 2; // REAR RIGHT
 const int ENCODER_2_PIN = 9;  // FRONT RIGHT
 const int ENCODER_3_PIN = A3; // FRONT LEFT
-const int ENCODER_4_PIN = A2; // REAR LEFT
-// Rest pins are used for motors: 3,5,6,11; 4,7,8,12; 
+const int ENCODER_4_PIN = 3; // REAR LEFT
+
+const int ENCODER_RIGHT_PIN = 2;
+const int ENCODER_LEFT_PIN = 3;
+// Rest pins are used for motors: 10 (instead of 3!!!),5,6,11; 4,7,8,12; 
+// Note than motor shield pin 3 is remapped to arduino pin 10,
+// requiring header change as described here https://samwedge.uk/posts/using-the-arduino-motor-controller-shield-with-two-external-interrupts/
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Static objects
@@ -99,6 +104,10 @@ int EncoderValues[] = {LOW, LOW, LOW, LOW};
 unsigned long EncoderUpdates[] = {0,0,0,0};
 unsigned long EncoderCounts[] = {0,0,0,0};
 const int N_Encoders = 4;
+
+volatile unsigned long leftEncoderCount = 0;
+volatile unsigned long rightEncoderCount = 0;
+
 
 int sliderVal, button, sliderId;
 
@@ -178,6 +187,11 @@ void setup()
   Serial.begin(SERIAL_SPEED);
   p("Hello I am Robaka. Gav.");
 
+  pinMode(ENCODER_RIGHT_PIN, INPUT);
+  pinMode(ENCODER_LEFT_PIN, INPUT);
+  attachInterrupt(0, rightEncoderEvent, CHANGE);
+  attachInterrupt(1, leftEncoderEvent, CHANGE);
+
   Bluetooth.begin(BLUETOOTH_SPEED);
 
   // Init pins for encoders
@@ -191,6 +205,16 @@ void setup()
 
   p("Setup complete");
   pphone("READY");
+}
+
+void leftEncoderEvent() {
+  ++leftEncoderCount;
+//  pf("L %d\n", leftEncoderCount);
+}
+
+void rightEncoderEvent() {
+  ++rightEncoderCount;
+//  pf("R %d\n", rightEncoderCount);
 }
 
 void readPhone()
@@ -315,10 +339,12 @@ void loop() {
 
   //REMOVEME
   if (state == Forward) {
-    unsigned long avg = (EncoderCounts[0] + EncoderCounts[1] + EncoderCounts[2] + EncoderCounts[3])/4;
-    if (avg >= 200) {
+    pf("L %lu R %lu\n", leftEncoderCount, rightEncoderCount);
+    unsigned long avg = (leftEncoderCount + rightEncoderCount)/2;
+    if (avg >= 400) {
+      pf("---L %lu R %lu\n", leftEncoderCount, rightEncoderCount);
       state = Stop;
-      EncoderCounts[0] = EncoderCounts[1] = EncoderCounts[2] = EncoderCounts[3] = 0;
+      leftEncoderCount = rightEncoderCount = 0;
     }
   }
 
@@ -401,6 +427,7 @@ void step() {
     case Stop:
       if (button == BUTTON_START) {
         state = Forward;
+        leftEncoderCount = rightEncoderCount = 0;
         moveStarted = millis();
         for (int i = 0; i < N_Encoders; i++) {
           EncoderUpdates[i] = millis();
@@ -486,6 +513,10 @@ void moveMotor(int motorId, int direction, int speed) {
 }
 
 bool isStuck() {
+  // REWRITE ME WITH INTERRUPTS
+  return false;
+
+
   unsigned long now = millis();
   int wheelsStuck = 0;
 
