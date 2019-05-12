@@ -61,6 +61,10 @@ const int MOTOR_FWD_RIGHT   = 3;
 
 const int BUTTON_STOP = 0;
 const int BUTTON_START = 1;
+const int BUTTON_RIGHT = 4;
+const int BUTTON_LEFT = 2;
+const int BUTTON_AUTO_ON = 5;
+const int BUTTON_AUTO_OFF = 6;
 
 const int PROXIMITY_THRESHOLD = 20; // cm
 const int BACKWARD_DURATION = 1000; // us
@@ -111,12 +115,15 @@ const int N_Encoders = 2;
 const int LeftEncoderIndex = 0;
 const int RightEncoderIndex = 1;
 
+bool Autonomy = true;
+
 int sliderVal, button, sliderId;
-int Ping = 0;
+volatile int Ping = 0;
 unsigned long moveStarted = 0;
 unsigned long stuckSince = 0;
 int headingOnStart = 0;
-int Heading = 0;
+volatile int Heading = 0;
+int prevHeading = -1;
 int turnProgress = 0;
 int Throttle = DEFAULT_MOTOR_SPEED;
 
@@ -242,39 +249,48 @@ void readPhone()
 
 void readIMU() {
  // IMU
-sensors_event_t event;
+sensors_event_t accelEvent;
+sensors_event_t magEvent;
+sensors_event_t gyroEvent;
 sensors_vec_t orientation;
 
 #ifdef IMU_DEBUG
 pf ("IMU [roll, pitch, heading, x/y/z] [");
 #endif
 
-accel.getEvent(&event);
-if (imu.accelGetOrientation(&event, &orientation)) {
+accel.getEvent(&accelEvent);
+mag.getEvent(&magEvent);
+
+if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
   #ifdef IMU_DEBUG
   Serial.print(orientation.roll);
   Serial.print(", ");
   Serial.print(orientation.pitch);
   Serial.print(", ");
-  #endif
-}
-
-mag.getEvent(&event);
-if (imu.magGetOrientation(SENSOR_AXIS_Z, &event, &orientation)) {
-  #ifdef IMU_DEBUG
   Serial.print(orientation.heading);
   Serial.print(", ");
   #endif
-  Heading = orientation.heading;
+  Heading = (int)orientation.heading;
+
+  if (Heading < 0)
+  {
+    Heading = 360 + Heading;
+  }
+
+  if (prevHeading != -1 && Heading == 0 && abs(prevHeading - Heading) > 20) {
+    Heading = prevHeading; // ignore
+  }
+
+  prevHeading = Heading;
 }
 
-gyro.getEvent(&event);
+gyro.getEvent(&gyroEvent);
 #ifdef IMU_DEBUG
-Serial.print(event.gyro.x);
+Serial.print(gyroEvent.gyro.x);
 Serial.print("/");
-Serial.print(event.gyro.y);
+Serial.print(gyroEvent.gyro.y);
 Serial.print("/");
-Serial.print(event.gyro.z);
+Serial.print(gyroEvent.gyro.z);
 pf("]\n");
 #endif
 }
@@ -309,17 +325,13 @@ void loop() {
   readSonars();
   readIMU();
 
-  // //REMOVEME
-  // if (state == Forward) {
-  //   pf("L %lu R %lu\n", leftEncoderCount, rightEncoderCount);
-  //   unsigned long avg = (leftEncoderCount + rightEncoderCount)/2;
-  //   if (avg >= 400) {
-  //     pf("---L %lu R %lu\n", leftEncoderCount, rightEncoderCount);
-  //     state = Stop;
-  //     leftEncoderCount = rightEncoderCount = 0;
-  //   }
-  // }
-
+  if (!isAutonomous() && (state == Forward || state == Backward)) {
+    unsigned long avg = (EncoderCounts[LeftEncoderIndex] + EncoderCounts[RightEncoderIndex])/2;
+    if (avg >= 200) {
+      state = Stop;
+      resetEncoders();
+    }
+  }
 
   // State machine
   step();
@@ -341,6 +353,21 @@ State chooseStateForDiversion() {
 
 unsigned long moveDuration() { 
   return millis() - moveStarted;
+}
+
+int turnAngle() { // negative: left, positive: right
+  int diff = headingOnStart - Heading;
+  int delta = 0; 
+
+  if (diff > 180) {
+    delta = 360 - abs(diff);  
+  } else if(diff < (-180)){
+    delta = - (360 - abs(diff));
+  } else {
+    delta = - diff;
+  }
+
+  return delta;
 }
 
 void step() {
@@ -365,29 +392,38 @@ void step() {
 
     case RightTurn:
     {
-      turnProgress = ((360+Heading)-headingOnStart) % 360;
+      turnProgress = turnAngle();      
+//      pf("RT, TP %d, Heading %d, headingOnStart %d, tdiff=%lu\n", turnAngle(), Heading, headingOnStart,moveDuration());
       // Ignore turn in the wrong direction -- happens at the early stage of the turn.
       if (turnProgress > 180) 
         break;
-      if (turnProgress >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
-        pf("RT, TP %d, Heading %d, headingOnStart %d, tdiff=%d\n", turnProgress, Heading, headingOnStart,moveDuration());
-        state = Forward;
-        moveStarted = millis();
+
+      if (abs(turnProgress) >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
+        if (isAutonomous()) {
+          state = Forward;
+          moveStarted = millis();
+        } else {
+          state = Stop;
+        }
       }
     }
     break;
 
     case LeftTurn:
     {
-      turnProgress = ((360+headingOnStart)-Heading) % 360;
+      turnProgress = turnAngle();
+      // pf("LT, TP %d, Heading %d, headingOnStart %d, tdiff=%lu\n", turnAngle(), Heading, headingOnStart,moveDuration());
       // Ignore turn in the wrong direction -- happens at the early stage of the turn
-      if (turnProgress > 180) 
+      if (turnProgress < -180) 
         break;
 
-      if (turnProgress >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
-        pf("LT, TP %d, Heading %d, headingOnStart %d, tdiff=%d\n", turnProgress, Heading, headingOnStart,moveDuration());
-        state = Forward;
-        moveStarted = millis();
+      if (abs(turnProgress) >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
+        if (isAutonomous()) {
+          state = Forward;
+          moveStarted = millis();
+        } else {
+          state = Stop;
+        }
       }
     }
     break;
@@ -397,6 +433,16 @@ void step() {
         state = Forward;
         resetEncoders();
         moveStarted = millis();
+      } else if (button == BUTTON_LEFT) {
+        state = LeftTurn;
+        headingOnStart = Heading;
+        moveStarted = millis();
+        turnProgress = 0;
+      } else if (button == BUTTON_RIGHT) {
+        state = RightTurn;
+        headingOnStart = Heading;
+        moveStarted = millis();
+        turnProgress = 0;
       }
       break;
 
@@ -407,11 +453,19 @@ void step() {
   if (button == BUTTON_STOP) {
     state = Stop;
     moveStarted = millis();
+  } else if (button == BUTTON_AUTO_OFF) {
+    Autonomy = false;
+  } else if (button == BUTTON_AUTO_ON) {
+    Autonomy = true;
   }
 
   if (prevState != state) {
    pf("State: %s -> %s\n", PrintableStates[prevState], PrintableStates[state]);
   }
+}
+
+bool isAutonomous() {
+  return Autonomy;
 }
 
 void resetEncoders() {
@@ -496,7 +550,7 @@ bool isStuck() {
       ++wheelsStuck;
   }  
 
-  bool stuck = wheelsStuck > 1;
+  bool stuck = wheelsStuck > 0;
 
   if (stuck && stuckSince == 0) {
     stuckSince = now;
