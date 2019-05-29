@@ -7,5 +7,9 @@
         "adafruit_sensor.h": "c",
         "adafruit_lsm303.h": "c",
         "adafruit_lsm303_u.h": "c"
+    },
+    "terminal.integrated.env.linux": {
+        "PATH": "/home/des/.platformio/penv/bin:/home/des/.platformio/penv:/home/des/.local/bin:/home/des/bin:/opt/ros/melodic/bin:/home/des/.local/bin:/home/des/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+        "PLATFORMIO_CALLER": "vscode"
     }
 }

@@ -1,11 +1,15 @@
 #include <stdarg.h>
 #include <SoftwareSerial.h>
-#include <ArduinoBlue.h>
 #include <MotorDriver.h>
 #include <NewPing.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_9DOF.h>
+
+#include <ros.h>
+#include <std_msgs/Float64.h>
+#include <sensor_msgs/Range.h>
+
 
 /* 
 LIBRARY PATCHES REQUIRED TO MAKE IT WORK
@@ -51,20 +55,15 @@ LIBRARY PATCHES REQUIRED TO MAKE IT WORK
 //#define IMU_DEBUG
 
 const int MAX_SONAR_DISTANCE  = 300; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-const int SERIAL_SPEED        = 9600;
+const int SERIAL_SPEED        = 57600;
 const int BLUETOOTH_SPEED     = 9600;
+
+const int RANGE_UPDATE_INTERVAL = 50; // ms
 
 const int MOTOR_REAR_LEFT   = 1;
 const int MOTOR_REAR_RIGHT  = 4;
 const int MOTOR_FWD_LEFT    = 2;
 const int MOTOR_FWD_RIGHT   = 3;
-
-const int BUTTON_STOP = 0;
-const int BUTTON_START = 1;
-const int BUTTON_RIGHT = 4;
-const int BUTTON_LEFT = 2;
-const int BUTTON_AUTO_ON = 5;
-const int BUTTON_AUTO_OFF = 6;
 
 const int PROXIMITY_THRESHOLD = 20; // cm
 const int BACKWARD_DURATION = 1000; // us
@@ -102,8 +101,6 @@ Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_SONAR_DISTANCE); // NewPing setup of pins and maximum distance.
-SoftwareSerial Bluetooth(BLUETOOTH_TX_PIN, BLUETOOTH_RX_PIN);
-ArduinoBlue Phone(Bluetooth); // pass reference of Bluetooth object to ArduinoCommander.
 MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-motor-shield.pdf
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -117,7 +114,6 @@ const int RightEncoderIndex = 1;
 
 bool Autonomy = true;
 
-int sliderVal, button, sliderId;
 volatile int Ping = 0;
 unsigned long moveStarted = 0;
 unsigned long stuckSince = 0;
@@ -127,21 +123,15 @@ int prevHeading = -1;
 int turnProgress = 0;
 int Throttle = DEFAULT_MOTOR_SPEED;
 
-enum State {
-  Stop = 0,
-  Forward,
-  Backward,
-  RightTurn,
-  LeftTurn
-} state;
+///////////////////////////////////////////////////////////////////////////////
+// ROS
+//ros::NodeHandle nh;
+ros::NodeHandle_<ArduinoHardware, 1, 1, 150, 150> nh;
 
-const char *PrintableStates[] = {
-  "STOP",
-  "FORWARD",
-  "BACKWARD",
-  "RIGHT",
-  "LEFT"
-};
+sensor_msgs::Range rangeMsg;
+ros::Publisher rangePublisher("sonar", &rangeMsg);
+char frameId[] = "/sonar";   // global frame id string
+unsigned long rangeTimer = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 void pf(const char *fmt, ... ){
@@ -150,21 +140,11 @@ void pf(const char *fmt, ... ){
         va_start (args, fmt );
         vsnprintf(buf, 256, fmt, args);
         va_end (args);
-        Serial.print(buf);
+//        Serial.print(buf);
 }
 
 void p(const char* string) {
-  Serial.println(string);
-}
-
-void pphone(const char *fmt, ... ) {
-        char buf[256]; // resulting string limited to 128 chars
-        va_list args;
-        va_start (args, fmt );
-        vsnprintf(buf, 256, fmt, args);
-        va_end (args);
-
-        Phone.sendMessage(String(buf));
+//  Serial.println(string);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -191,17 +171,28 @@ void setupEncoders() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+void setupROS() {
+  nh.initNode();
+  nh.advertise(rangePublisher);
+
+  rangeMsg.radiation_type = sensor_msgs::Range::ULTRASOUND;
+  rangeMsg.header.frame_id = frameId;
+  rangeMsg.field_of_view = 0.26;
+  rangeMsg.min_range = 0.03;
+  rangeMsg.max_range = 1.0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // Setup code runs once after program starts.
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
   p("Hello I am Robaka. Gav.");
 
-  Bluetooth.begin(BLUETOOTH_SPEED);
+  setupROS();
 
   setupEncoders();
   setupIMU();
-  state = Stop;
 
   p("Setup complete");
 }
@@ -214,37 +205,6 @@ void leftEncoderEvent() {
 void rightEncoderEvent() {
   ++EncoderCounts[RightEncoderIndex];
   EncoderUpdates[RightEncoderIndex] = millis();
-}
-
-void readPhone()
-{
-  // ID of the button pressed pressed.
-  button = Phone.getButton();
-
-  // Returns the text data sent from the Phone.
-  // After it returns the latest data, empty string "" is sent in subsequent.
-  // calls until text data is sent again.
-  String str = Phone.getText();
-  if (str != "") {
-    p(str.c_str());
-  }
-
-  // ID of the slider moved.
-  sliderId = Phone.getSliderId();
-
-  // Slider value goes from 0 to 200.
-  sliderVal = Phone.getSliderVal();
-
-  // Display button data whenever its pressed.
-  if (button != -1) {
-    pf("Button %d\n", button);
-  }
-
-  // Display slider data when slider moves
-  if (sliderId != -1) {
-    pf("Slider[%d]: %d\n", sliderId, sliderVal);
-    Throttle = map(sliderVal, 0, 200, 0, 255);
-  }
 }
 
 void readIMU() {
@@ -263,12 +223,12 @@ mag.getEvent(&magEvent);
 
 if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
   #ifdef IMU_DEBUG
-  Serial.print(orientation.roll);
-  Serial.print(", ");
-  Serial.print(orientation.pitch);
-  Serial.print(", ");
-  Serial.print(orientation.heading);
-  Serial.print(", ");
+  // Serial.print(orientation.roll);
+  // Serial.print(", ");
+  // Serial.print(orientation.pitch);
+  // Serial.print(", ");
+  // Serial.print(orientation.heading);
+  // Serial.print(", ");
   #endif
   Heading = (int)orientation.heading;
 
@@ -286,12 +246,12 @@ if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
 
 gyro.getEvent(&gyroEvent);
 #ifdef IMU_DEBUG
-Serial.print(gyroEvent.gyro.x);
-Serial.print("/");
-Serial.print(gyroEvent.gyro.y);
-Serial.print("/");
-Serial.print(gyroEvent.gyro.z);
-pf("]\n");
+// Serial.print(gyroEvent.gyro.x);
+// Serial.print("/");
+// Serial.print(gyroEvent.gyro.y);
+// Serial.print("/");
+// Serial.print(gyroEvent.gyro.z);
+// pf("]\n");
 #endif
 }
 
@@ -318,37 +278,27 @@ void loop() {
 
   printState();
 
-  State prevState = state;
-  int prevThrottle = Throttle;
-
-  readPhone();
   readSonars();
   readIMU();
 
-  if (!isAutonomous() && (state == Forward || state == Backward)) {
-    unsigned long avg = (EncoderCounts[LeftEncoderIndex] + EncoderCounts[RightEncoderIndex])/2;
-    if (avg >= 200) {
-      state = Stop;
-      resetEncoders();
-    }
-  }
-
-  // State machine
-  step();
-
-  if (state != prevState || Throttle != prevThrottle) {
-    updateMotorsOnStep();
-  }
+  updateROS();
 
   attachInterrupts();
 }
 
-bool obstacleDetected() {
-  return Ping < PROXIMITY_THRESHOLD && Ping > 0;
+void updateROS() {
+  if ((millis() - rangeTimer) > RANGE_UPDATE_INTERVAL) {
+    rangeMsg.range = Ping/100.0;
+    rangeMsg.header.stamp = nh.now();
+    rangePublisher.publish(&rangeMsg);
+    rangeTimer = millis() + RANGE_UPDATE_INTERVAL;
+  }
+
+  nh.spinOnce();
 }
 
-State chooseStateForDiversion() {
-  return random(0,2) > 0 ? RightTurn : LeftTurn;
+bool obstacleDetected() {
+  return Ping < PROXIMITY_THRESHOLD && Ping > 0;
 }
 
 unsigned long moveDuration() { 
@@ -370,156 +320,10 @@ int turnAngle() { // negative: left, positive: right
   return delta;
 }
 
-void step() {
-  State prevState = state;
-
-  switch (state) {
-    case Forward:
-      if (obstacleDetected() || isStuck()) {
-        state = Backward;
-        moveStarted = millis();
-      }
-     break;
-
-    case Backward:
-      if (moveDuration() >= BACKWARD_DURATION) {
-        state = chooseStateForDiversion();
-        headingOnStart = Heading;
-        moveStarted = millis();
-        turnProgress = 0;
-      }
-      break;
-
-    case RightTurn:
-    {
-      turnProgress = turnAngle();      
-//      pf("RT, TP %d, Heading %d, headingOnStart %d, tdiff=%lu\n", turnAngle(), Heading, headingOnStart,moveDuration());
-      // Ignore turn in the wrong direction -- happens at the early stage of the turn.
-      if (turnProgress > 180) 
-        break;
-
-      if (abs(turnProgress) >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
-        if (isAutonomous()) {
-          state = Forward;
-          moveStarted = millis();
-        } else {
-          state = Stop;
-        }
-      }
-    }
-    break;
-
-    case LeftTurn:
-    {
-      turnProgress = turnAngle();
-      // pf("LT, TP %d, Heading %d, headingOnStart %d, tdiff=%lu\n", turnAngle(), Heading, headingOnStart,moveDuration());
-      // Ignore turn in the wrong direction -- happens at the early stage of the turn
-      if (turnProgress < -180) 
-        break;
-
-      if (abs(turnProgress) >= DIVERSION_HEADING || moveDuration() >= MAX_TURN_DURATION) {
-        if (isAutonomous()) {
-          state = Forward;
-          moveStarted = millis();
-        } else {
-          state = Stop;
-        }
-      }
-    }
-    break;
-
-    case Stop:
-      if (button == BUTTON_START) {
-        state = Forward;
-        resetEncoders();
-        moveStarted = millis();
-      } else if (button == BUTTON_LEFT) {
-        state = LeftTurn;
-        headingOnStart = Heading;
-        moveStarted = millis();
-        turnProgress = 0;
-      } else if (button == BUTTON_RIGHT) {
-        state = RightTurn;
-        headingOnStart = Heading;
-        moveStarted = millis();
-        turnProgress = 0;
-      }
-      break;
-
-    default: 
-      break;
-  }
-
-  if (button == BUTTON_STOP) {
-    state = Stop;
-    moveStarted = millis();
-  } else if (button == BUTTON_AUTO_OFF) {
-    Autonomy = false;
-  } else if (button == BUTTON_AUTO_ON) {
-    Autonomy = true;
-  }
-
-  if (prevState != state) {
-   pf("State: %s -> %s\n", PrintableStates[prevState], PrintableStates[state]);
-  }
-}
-
-bool isAutonomous() {
-  return Autonomy;
-}
-
 void resetEncoders() {
   for (int i = 0; i < N_Encoders; i++) {
     EncoderCounts[i] = 0;
     EncoderUpdates[i] = millis();
-  }
-}
-
-void updateMotorsOnStep() {
-#if (MOVE_MOTORS == 0) 
-  return;
-#endif
-
-  int speed = Throttle;
-
-  switch (state) {
-    case Forward:
-      moveMotor(MOTOR_FWD_LEFT, FORWARD, speed);
-      moveMotor(MOTOR_REAR_LEFT, FORWARD, speed);
-      moveMotor(MOTOR_FWD_RIGHT, FORWARD, speed);
-      moveMotor(MOTOR_REAR_RIGHT, FORWARD, speed);
-      break;
-
-    case Backward:
-      moveMotor(MOTOR_FWD_LEFT, BACKWARD, speed);
-      moveMotor(MOTOR_REAR_LEFT, BACKWARD, speed);
-      moveMotor(MOTOR_FWD_RIGHT, BACKWARD, speed);
-      moveMotor(MOTOR_REAR_RIGHT, BACKWARD, speed);
-      break;
-
-    case RightTurn:
-      moveMotor(MOTOR_FWD_LEFT, FORWARD, speed);
-      moveMotor(MOTOR_REAR_LEFT, FORWARD, speed);
-      moveMotor(MOTOR_FWD_RIGHT, BACKWARD, speed);
-      moveMotor(MOTOR_REAR_RIGHT, BACKWARD, speed);
-      break;
-
-    case LeftTurn:
-      moveMotor(MOTOR_FWD_LEFT, BACKWARD, speed);
-      moveMotor(MOTOR_REAR_LEFT, BACKWARD, speed);
-      moveMotor(MOTOR_FWD_RIGHT, FORWARD, speed);
-      moveMotor(MOTOR_REAR_RIGHT, FORWARD, speed);
-      break;
-
-    case Stop:
-      moveMotor(MOTOR_FWD_LEFT, BRAKE, 0);
-      moveMotor(MOTOR_REAR_LEFT, BRAKE, 0);
-      moveMotor(MOTOR_FWD_RIGHT, BRAKE, 0);
-      moveMotor(MOTOR_REAR_RIGHT, BRAKE, 0);
-      break;
-
-    default:
-    break;
   }
 }
 
