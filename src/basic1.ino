@@ -33,18 +33,11 @@ MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-moto
 ///////////////////////////////////////////////////////////////////////////////
 // Global variables
 
-bool Autonomy = true;
-
 volatile int Pings[N_Sonars];
 volatile int Ping = 0;
-
-unsigned long moveStarted = 0;
-unsigned long stuckSince = 0;
-int headingOnStart = 0;
 volatile int Heading = 0;
-int prevHeading = -1;
-int turnProgress = 0;
-int Throttle = DEFAULT_MOTOR_SPEED;
+
+unsigned long StuckSince = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 void setupIMU() {
@@ -124,15 +117,6 @@ if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
   #endif
 
   Heading = (int)orientation.heading;
-
-  if (Heading < 0) {
-    Heading = 360 + Heading;
-  }
-
-  if (prevHeading != -1 && Heading == 0 && abs(prevHeading - Heading) > 20) {
-    Heading = prevHeading; // ignore
-  }
-  prevHeading = Heading;
 }
 
 gyro.getEvent(&gyroEvent);
@@ -187,29 +171,6 @@ void updateROS() {
   nh.spinOnce();
 }
 
-bool obstacleDetected() {
-  return Ping < PROXIMITY_THRESHOLD && Ping > 0;
-}
-
-unsigned long moveDuration() { 
-  return millis() - moveStarted;
-}
-
-int turnAngle() { // negative: left, positive: right
-  int diff = headingOnStart - Heading;
-  int delta = 0; 
-
-  if (diff > 180) {
-    delta = 360 - abs(diff);  
-  } else if(diff < (-180)){
-    delta = - (360 - abs(diff));
-  } else {
-    delta = - diff;
-  }
-
-  return delta;
-}
-
 void resetEncoders() {
   for (int i = 0; i < N_Encoders; i++) {
     EncoderCounts[i] = 0;
@@ -246,11 +207,11 @@ bool isStuck() {
 
   bool stuck = wheelsStuck > 0;
 
-  if (stuck && stuckSince == 0) {
-    stuckSince = now;
+  if (stuck && StuckSince == 0) {
+    StuckSince = now;
   } else if (!stuck) {
-    stuckSince = 0;
+    StuckSince = 0;
   }
 
-  return stuck && now - stuckSince >= STUCK_DECISION_THRESHOLD;
+  return stuck && now - StuckSince >= STUCK_DECISION_THRESHOLD;
 }
