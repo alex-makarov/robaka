@@ -14,6 +14,11 @@
 #include "hw_due.h"
 #endif
 
+#define vLog Serial.println
+#ifndef vLog
+  #define vLog(x)
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 // Static objects
 // TODO: FIX for Due
@@ -42,33 +47,19 @@ int turnProgress = 0;
 int Throttle = DEFAULT_MOTOR_SPEED;
 
 ///////////////////////////////////////////////////////////////////////////////
-void pf(const char *fmt, ... ){
-        char buf[256]; // resulting string limited to 128 chars
-        va_list args;
-        va_start (args, fmt );
-        vsnprintf(buf, 256, fmt, args);
-        va_end (args);
-//        Serial.print(buf);
-}
-
-void p(const char* string) {
-//  Serial.println(string);
-}
-
-///////////////////////////////////////////////////////////////////////////////
 void setupIMU() {
   if (!gyro.begin()) {
-    p("Oops ... unable to initialize the Gyroscope. Check your wiring!");
+    vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
     while (1);
   }
 
   // Try to initialise and warn if we couldn't detect the chip
   if (!imu.begin() || !accel.begin() || !mag.begin()) { 
-    p("Oops ... unable to initialize the IMU. Check your wiring!");
+    vLog("Oops ... unable to initialize the IMU. Check your wiring!");
     while (1);
   }
     
-  p("Found LSM303DLHC and L3GD20 IMU");
+  vLog("Found LSM303DLHC and L3GD20 IMU");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -108,7 +99,7 @@ void setup()
   setupEncoders();
   setupIMU();
 
-  p("Setup complete");
+  vLog("Setup complete");
 }
 
 void readIMU() {
@@ -119,7 +110,7 @@ sensors_event_t gyroEvent;
 sensors_vec_t orientation;
 
 #ifdef IMU_DEBUG
-pf ("IMU [roll, pitch, heading, x/y/z] [");
+vLog ("IMU [roll, pitch, heading, x/y/z]");
 #endif
 
 accel.getEvent(&accelEvent);
@@ -127,35 +118,29 @@ mag.getEvent(&magEvent);
 
 if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
   #ifdef IMU_DEBUG
-  // Serial.print(orientation.roll);
-  // Serial.print(", ");
-  // Serial.print(orientation.pitch);
-  // Serial.print(", ");
-  // Serial.print(orientation.heading);
-  // Serial.print(", ");
+  vLog(String(orientation.roll) + ", " +
+  String(orientation.pitch) + ", " +
+  String(orientation.heading));
   #endif
+
   Heading = (int)orientation.heading;
 
-  if (Heading < 0)
-  {
+  if (Heading < 0) {
     Heading = 360 + Heading;
   }
 
   if (prevHeading != -1 && Heading == 0 && abs(prevHeading - Heading) > 20) {
     Heading = prevHeading; // ignore
   }
-
   prevHeading = Heading;
 }
 
 gyro.getEvent(&gyroEvent);
 #ifdef IMU_DEBUG
-// Serial.print(gyroEvent.gyro.x);
-// Serial.print("/");
-// Serial.print(gyroEvent.gyro.y);
-// Serial.print("/");
-// Serial.print(gyroEvent.gyro.z);
-// pf("]\n");
+vLog("Gyro x/y/z");
+vLog(String(gyroEvent.gyro.x) + ", " +
+    String(gyroEvent.gyro.y) + ", " +
+    String(gyroEvent.gyro.z));
 #endif
 }
 
@@ -268,8 +253,4 @@ bool isStuck() {
   }
 
   return stuck && now - stuckSince >= STUCK_DECISION_THRESHOLD;
-}
-
-void printState() {
-  pf ("E: [%lu %lu %lu %lu]\n", EncoderCounts[0], EncoderCounts[1], EncoderCounts[2], EncoderCounts[3]);
 }
