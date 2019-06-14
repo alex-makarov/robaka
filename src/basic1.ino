@@ -22,7 +22,7 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_SONAR_DISTANCE); // NewPing setup of pins and maximum distance.
+NewPing *Sonars[N_Sonars];
 MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-motor-shield.pdf
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,9 @@ MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-moto
 
 bool Autonomy = true;
 
+volatile int Pings[N_Sonars];
 volatile int Ping = 0;
+
 unsigned long moveStarted = 0;
 unsigned long stuckSince = 0;
 int headingOnStart = 0;
@@ -70,6 +72,13 @@ void setupIMU() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+void setupSonars() {
+  for (int i = 0; i < N_Sonars; i+=2) {
+    Sonars[i] = new NewPing(SonarPins[i], SonarPins[i+1], MAX_SONAR_DISTANCE);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 void setupEncoders() {
   for (int i = 0; i < N_Encoders; i++) {
     pinMode(Encoders[i], INPUT);
@@ -94,6 +103,7 @@ void setupROS() {
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
+  setupSonars();
   setupROS();
   setupEncoders();
   setupIMU();
@@ -150,10 +160,10 @@ gyro.getEvent(&gyroEvent);
 }
 
 void readSonars() {
-    Ping = sonar.ping_cm();
-    if (Ping != 0) {
-//      pf("[SONAR] %d\n", Ping);
-    }
+  for (int i = 0; i < N_Sonars; i++) {
+    Pings[i] = Sonars[i]->ping_cm();
+  }
+  Ping = Pings[0]; // backward compat
 }
 
 void detachInterrupts() {

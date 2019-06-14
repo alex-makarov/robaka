@@ -13,8 +13,10 @@ const unsigned int TRIGGER_2_PIN = A2;
 const unsigned int ECHO_2_PIN    = A3;
 const unsigned int TRIGGER_3_PIN = A4; 
 const unsigned int ECHO_3_PIN    = A5;
-const unsigned int TRIGGER_PIN = TRIGGER_1_PIN;
-const unsigned int ECHO_PIN = ECHO_1_PIN;
+const int N_Sonars = 3;
+const unsigned int SonarPins[] = { TRIGGER_1_PIN, ECHO_1_PIN,
+                                TRIGGER_2_PIN, ECHO_2_PIN,
+                                TRIGGER_3_PIN, ECHO_3_PIN };
 
 // Encoders
 const unsigned int ENCODER_1_PIN = 46; // TBD

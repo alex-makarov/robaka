@@ -29,8 +29,10 @@ LIBRARY PATCHES REQUIRED TO MAKE IT WORK ON ARDUINO UNO
 const unsigned int BLUETOOTH_TX_PIN = 13;
 const unsigned int BLUETOOTH_RX_PIN = A2;
 // Echo sonar HC-SR04
-const unsigned int TRIGGER_PIN = A1; // Arduino pin tied to trigger pin on the ultrasonic sensor.
-const unsigned int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic sensor.
+const unsigned int TRIGGER_1_PIN = A1; // Arduino pin tied to trigger pin on the ultrasonic sensor.
+const unsigned int ECHO_1_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic sensor.
+const int N_Sonars = 1;
+const unsigned int SonarPins[] = { TRIGGER_1_PIN, ECHO_1_PIN };
 
 // Encoders
 const unsigned int ENCODER_1_PIN = 2; // REAR RIGHT. Interrupt pin.
