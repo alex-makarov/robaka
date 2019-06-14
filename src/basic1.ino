@@ -16,6 +16,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Static objects
+// TODO: FIX for Due
 Adafruit_9DOF imu = Adafruit_9DOF();
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
@@ -26,12 +27,6 @@ MotorDriver m; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-moto
 
 ///////////////////////////////////////////////////////////////////////////////
 // Global variables
-const int Encoders[] = {ENCODER_LEFT_PIN, ENCODER_RIGHT_PIN};
-volatile unsigned long EncoderUpdates[] = {0,0};
-volatile unsigned long EncoderCounts[] = {0,0};
-const int N_Encoders = 2;
-const int LeftEncoderIndex = 0;
-const int RightEncoderIndex = 1;
 
 bool Autonomy = true;
 
@@ -76,8 +71,9 @@ void setupIMU() {
 
 ///////////////////////////////////////////////////////////////////////////////
 void setupEncoders() {
-  pinMode(ENCODER_RIGHT_PIN, INPUT);
-  pinMode(ENCODER_LEFT_PIN, INPUT);
+  for (int i = 0; i < N_Encoders; i++) {
+    pinMode(Encoders[i], INPUT);
+  }
   attachInterrupts();
 }
 
@@ -98,24 +94,11 @@ void setupROS() {
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
-  p("Hello I am Robaka. Gav.");
-
   setupROS();
-
   setupEncoders();
   setupIMU();
 
   p("Setup complete");
-}
-
-void leftEncoderEvent() {
-  ++EncoderCounts[LeftEncoderIndex];
-  EncoderUpdates[LeftEncoderIndex] = millis();
-}
-
-void rightEncoderEvent() {
-  ++EncoderCounts[RightEncoderIndex];
-  EncoderUpdates[RightEncoderIndex] = millis();
 }
 
 void readIMU() {
@@ -174,20 +157,21 @@ void readSonars() {
 }
 
 void detachInterrupts() {
-  detachInterrupt(0);
-  detachInterrupt(1);
+  for (int i = 0; i < N_Encoders; i++) {
+      detachInterrupt(digitalPinToInterrupt(Encoders[i]));
+  }
 }
 
 void attachInterrupts() {
-  attachInterrupt(0, rightEncoderEvent, CHANGE);
-  attachInterrupt(1, leftEncoderEvent, CHANGE);
+  for (int i = 0; i < N_Encoders; i++) {
+    attachInterrupt(digitalPinToInterrupt(Encoders[i]), EncoderISRs[i], CHANGE);
+    pinMode(Encoders[i], INPUT);
+  }
 }
 
-// Put your main code here, to run repeatedly:
+// MAIN LOOP
 void loop() {
   detachInterrupts();
-
-  printState();
 
   readSonars();
   readIMU();
@@ -277,5 +261,5 @@ bool isStuck() {
 }
 
 void printState() {
-//  pf ("E: [%lu %lu %lu %lu]\n", EncoderCounts[0], EncoderCounts[1], EncoderCounts[2], EncoderCounts[3]);
+  pf ("E: [%lu %lu %lu %lu]\n", EncoderCounts[0], EncoderCounts[1], EncoderCounts[2], EncoderCounts[3]);
 }

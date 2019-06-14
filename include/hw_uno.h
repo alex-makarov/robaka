@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
+typedef void (*ISR)();
 
 /* 
 LIBRARY PATCHES REQUIRED TO MAKE IT WORK ON ARDUINO UNO
@@ -25,17 +26,32 @@ LIBRARY PATCHES REQUIRED TO MAKE IT WORK ON ARDUINO UNO
 
 // Pins used on Arduino UNO
 // Bluetooth HM-10
-const int BLUETOOTH_TX_PIN = 13;
-const int BLUETOOTH_RX_PIN = A2;
+const unsigned int BLUETOOTH_TX_PIN = 13;
+const unsigned int BLUETOOTH_RX_PIN = A2;
 // Echo sonar HC-SR04
-const int TRIGGER_PIN = A1; // Arduino pin tied to trigger pin on the ultrasonic sensor.
-const int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic sensor.
+const unsigned int TRIGGER_PIN = A1; // Arduino pin tied to trigger pin on the ultrasonic sensor.
+const unsigned int ECHO_PIN    = A0; // Arduino pin tied to echo pin on the ultrasonic sensor.
+
 // Encoders
-const int ENCODER_1_PIN = 2; // REAR RIGHT. Interrupt pin.
-const int ENCODER_4_PIN = 3; // REAR LEFT. Interrupt pin.
-const int ENCODER_2_PIN = 9;  // FRONT RIGHT. UNUSED.
-const int ENCODER_3_PIN = A3; // FRONT LEFT. UNUSED.
-const int ENCODER_RIGHT_PIN = ENCODER_1_PIN;
-const int ENCODER_LEFT_PIN = ENCODER_4_PIN;
+const unsigned int ENCODER_1_PIN = 2; // REAR RIGHT. Interrupt pin.
+const unsigned int ENCODER_4_PIN = 3; // REAR LEFT. Interrupt pin.
+const unsigned int ENCODER_RIGHT_PIN = ENCODER_1_PIN;
+const unsigned int ENCODER_LEFT_PIN = ENCODER_4_PIN;
+
+const unsigned int Encoders[] = {ENCODER_LEFT_PIN, ENCODER_RIGHT_PIN};
+volatile unsigned long EncoderUpdates[] = {0,0};
+volatile unsigned long EncoderCounts[] = {0,0};
+const int N_Encoders = 2;
+
+void rightPinISR() {
+    ++EncoderCounts[1];
+    EncoderUpdates[1] = millis();
+}
+void leftPinISR() {
+    ++EncoderCounts[0];
+    EncoderUpdates[0] = millis();
+}
+
+const ISR EncoderISRs[] = {rightPinISR, leftPinISR};
 
 // Rest pins are used for motors: 10 (instead of 3, see above),5,6,11; 4,7,8,12; 
