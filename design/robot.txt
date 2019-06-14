@@ -1,0 +1,12 @@
+WHEELS
+  "TT Motor" encoder and wheel parameters
+
+  Motors have optical encoders, emitting light through a disk with 20 slots.
+  Wheel size: 65x27mm , 204.2mm circle length.
+  
+  20 slots, 40 state changes per full revolution.
+  40 state changes = 204.2mm traveled
+  1 state change = (204.2 / 40) = 5.1mm
+
+  100 state changes = 2.5 full revolutions = 51.5 cm
+  200 state changes = 5 full revolutions = 103 cm
