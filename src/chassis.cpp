@@ -28,8 +28,12 @@ public:
     NewPing *sonars[N_Sonars];
     MotorDriver motor; // see https://cdn-learn.adafruit.com/downloads/pdf/adafruit-motor-shield.pdf
 
+    sensors_event_t accelEvent;
+    sensors_event_t magEvent;
+    sensors_event_t gyroEvent;
+    sensors_vec_t orientation;
+
     volatile int pings[N_Sonars];
-    int heading;
 
     bool initIMU();
     bool initSonar();
@@ -45,17 +49,17 @@ public:
 bool Chassis::HWImpl::initIMU() {
   if (!gyro.begin()) {
     vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
-    while (1);
+    return false;
   }
 
   // Try to initialise and warn if we couldn't detect the chip
   if (!imu.begin() || !accel.begin() || !mag.begin()) { 
     vLog("Oops ... unable to initialize the IMU. Check your wiring!");
-    while (1);
+    return false;
   }
     
   vLog("Found LSM303DLHC and L3GD20 IMU");
-    return true;
+  return true;
 }
 
 bool Chassis::HWImpl::initSonar() {
@@ -87,11 +91,6 @@ void Chassis::HWImpl::detachInterrupts() {
 }
 
 void Chassis::HWImpl::readIMU() {
- // IMU
-sensors_event_t accelEvent;
-sensors_event_t magEvent;
-sensors_event_t gyroEvent;
-sensors_vec_t orientation;
 
 #ifdef IMU_DEBUG
 vLog ("IMU [roll, pitch, heading, x/y/z]");
@@ -106,8 +105,6 @@ if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
   String(orientation.pitch) + ", " +
   String(orientation.heading));
   #endif
-
-    heading = (int)orientation.heading;
 }
 
 gyro.getEvent(&gyroEvent);
@@ -140,6 +137,7 @@ Chassis* Chassis::instance() {
 
 Chassis::Chassis() {
     impl = new Chassis::HWImpl();
+    lastUpdate = 0;
 }
 
 Chassis::~Chassis() {
@@ -157,6 +155,7 @@ void Chassis::updateSensors() {
     impl->readIMU();
     impl->readSonar();
     impl->attachInterrupts();
+    lastUpdate = millis();
 }
 
 void Chassis::moveMotor(int motorId, int direction, int speed) {
@@ -175,6 +174,46 @@ void Chassis::moveMotor(int motorId, int direction, int speed) {
       impl->motor.motor(motorId, direction, speed);
       break;
   }
+}
+
+int Chassis::heading() const {
+    return (int)impl->orientation.heading;
+}
+
+float Chassis::roll() const {
+    return impl->orientation.roll;
+}
+
+float Chassis::pitch() const {
+    return impl->orientation.pitch;
+}
+
+void Chassis::gyro(float& x, float& y, float& z) const {
+    x = impl->gyroEvent.gyro.x;
+    y = impl->gyroEvent.gyro.y;
+    z = impl->gyroEvent.gyro.z;
+}
+
+int Chassis::speed() const {
+    return -1; //TODO
+}
+
+int Chassis::range(const int sonar) const {
+    if (sonar < 0 || sonar > N_Sonars-1) 
+        return -1;
+
+    return impl->pings[sonar];
+}
+
+int Chassis::encoderCount(const int encoder) const {
+    if (encoder < 0 || encoder > N_Encoders-1)
+        return -1;
+
+    return EncoderCounts[encoder];
+}
+
+unsigned long Chassis::lastUpdateTs() const {
+    return lastUpdate;
 }
 
 

@@ -52,7 +52,7 @@ void setupROS() {
 
 void updateROS() {
   if ((millis() - rangeTimer) > RANGE_UPDATE_INTERVAL) {
-//    rangeMsg.range = Ping/100.0;
+    rangeMsg.range = robaka->range()/100.0;
     rangeMsg.header.stamp = nh.now();
     rangePublisher.publish(&rangeMsg);
     rangeTimer = millis() + RANGE_UPDATE_INTERVAL;
