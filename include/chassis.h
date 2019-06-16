@@ -2,6 +2,18 @@
 #ifndef _CHASSIS_H
 #define _CHASSIS_H 1
 
+enum Direction {
+    Forward = 0,
+    Backward
+};
+
+enum Wheel {
+    FrontLeft = 0,
+    FrontRight,
+    RearLeft,
+    RearRight
+};
+
 class Chassis {
 public:
     static Chassis* instance();
@@ -9,7 +21,7 @@ public:
     bool init();
     void updateSensors();
 
-    void moveMotor(int motorId, int direction, int speed);
+    void moveMotor (Wheel wheel, Direction direction, int speed);
 
     int heading() const;
     float roll() const;

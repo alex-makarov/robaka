@@ -158,20 +158,31 @@ void Chassis::updateSensors() {
     lastUpdate = millis();
 }
 
-void Chassis::moveMotor(int motorId, int direction, int speed) {
+//void Chassis::moveMotor(int motorId, int direction, int speed) {
+void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
+
+    int motorId = 0;
+    switch (wheel) {
+        case FrontLeft: motorId = MOTOR_FWD_LEFT; break;
+        case FrontRight: motorId = MOTOR_FWD_RIGHT; break;
+        case RearLeft: motorId = MOTOR_REAR_LEFT; break;
+        case RearRight: motorId = MOTOR_REAR_RIGHT; break;
+    }
+    int _direction = direction == Forward ? FORWARD : BACKWARD;
+
   // Mapping according to motor orientation in the chassis
   switch(motorId) {
     case MOTOR_REAR_RIGHT:
     case MOTOR_FWD_RIGHT:
-      if (direction == FORWARD || direction == BACKWARD) {
+      if (_direction == FORWARD || _direction == BACKWARD) {
         // Only remap motor direction for rotation, not for braking or coasting
-        impl->motor.motor(motorId, direction == FORWARD ? BACKWARD : FORWARD, speed);
+        impl->motor.motor(motorId, _direction == FORWARD ? BACKWARD : FORWARD, speed);
       } else {
-        impl->motor.motor(motorId, direction, speed);
+        impl->motor.motor(motorId, _direction, speed);
       }
       break;
     default:
-      impl->motor.motor(motorId, direction, speed);
+      impl->motor.motor(motorId, _direction, speed);
       break;
   }
 }

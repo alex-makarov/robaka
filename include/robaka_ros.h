@@ -2,12 +2,27 @@
 #include <std_msgs/Float64.h>
 #include <sensor_msgs/Range.h>
 
-///////////////////////////////////////////////////////////////////////////////
-// ROS support
-//ros::NodeHandle nh;
-ros::NodeHandle_<ArduinoHardware, 1, 1, 150, 150> nh;
+#ifndef _ROBAKA_ROS_H
+#define _ROBAKA_ROS_H
 
-sensor_msgs::Range rangeMsg;
-ros::Publisher rangePublisher("sonar", &rangeMsg);
-char frameId[] = "/sonar";   // global frame id string
-unsigned long rangeTimer = 0;
+///////////////////////////////////////////////////////////////////////////////
+
+class Chassis;
+
+class RosNode {
+public:
+    RosNode(Chassis& chassis);
+
+    void publishUpdates();
+
+private:
+    ros::NodeHandle_<ArduinoHardware, 1, 1, 150, 150> nh;
+
+    sensor_msgs::Range rangeMsg;
+    ros::Publisher rangePublisher;
+    const char* frameId = "/sonar";
+
+    Chassis& chassis;
+};
+
+#endif
