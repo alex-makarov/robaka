@@ -1,5 +1,10 @@
 #include <Arduino.h>
 
+#ifndef _HW_DUE_H
+#define _HW_DUE_H
+
+// HW design: design/robot2.fz
+
 typedef void (*ISR)();
 
 // Pins used on Arduino UNO
@@ -50,3 +55,5 @@ const ISR EncoderISRs[] = {EncoderISR0, EncoderISR1, EncoderISR2, EncoderISR3};
 
 
 // TO ADD: ESP8266
+
+#endif

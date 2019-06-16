@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
+#ifndef _HW_UNO_H
+#define _HW_UNO_H
+
+// HW design: design/robot1.fz
+
 typedef void (*ISR)();
 
 /* 
@@ -53,7 +58,8 @@ void leftPinISR() {
     ++EncoderCounts[0];
     EncoderUpdates[0] = millis();
 }
-
 const ISR EncoderISRs[] = {rightPinISR, leftPinISR};
 
 // Rest pins are used for motors: 10 (instead of 3, see above),5,6,11; 4,7,8,12; 
+
+#endif

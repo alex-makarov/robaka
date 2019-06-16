@@ -11,5 +11,6 @@
     "terminal.integrated.env.linux": {
         "PATH": "/home/des/.platformio/penv/bin:/home/des/.platformio/penv:/home/des/.local/bin:/home/des/bin:/opt/ros/melodic/bin:/home/des/.local/bin:/home/des/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
         "PLATFORMIO_CALLER": "vscode"
-    }
+    },
+    "C_Cpp.clang_format_style": "/Users/alex/private/clang-format.txt"
 }
