@@ -145,9 +145,10 @@ Chassis::~Chassis() {
 }
 
 bool Chassis::init() {
-    return impl->initEncoders() &&
+    initialized =  impl->initEncoders() &&
         impl->initSonar() &&
         impl->initIMU();
+    return initialized;
 }
 
 void Chassis::updateSensors() {

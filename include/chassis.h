@@ -32,6 +32,7 @@ public:
     int encoderCount(const int encoder=0) const;
 
     unsigned long lastUpdateTs() const;
+    bool isInitialized() const { return initialized; }
 
 private:
     Chassis();
@@ -40,6 +41,7 @@ private:
     static Chassis* _instance;
 
     unsigned long lastUpdate;
+    bool initialized;
 
     class HWImpl;
     HWImpl* impl;
