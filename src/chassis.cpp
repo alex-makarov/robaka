@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_9DOF.h>
+#include <SimplePID.h>
 
 #include "chassis.h"
 #include "config.h"
@@ -217,7 +218,9 @@ int Chassis::range(const int sonar) const {
     return impl->pings[sonar];
 }
 
-int Chassis::encoderCount(const int encoder) const {
+int Chassis::encoderCount(Wheel wheel) const {
+    int encoder = wheelToEncoder(wheel);
+
     if (encoder < 0 || encoder > N_Encoders-1)
         return -1;
 
@@ -226,6 +229,16 @@ int Chassis::encoderCount(const int encoder) const {
 
 unsigned long Chassis::lastUpdateTs() const {
     return lastUpdate;
+}
+
+int Chassis::wheelToEncoder(Wheel wheel) const {
+    switch (wheel) {
+        case FrontLeft: return 0;
+        case FrontRight: return 1;
+        case RearLeft: return 2;
+        case RearRight: return 3;
+    }
+    return 0;
 }
 
 

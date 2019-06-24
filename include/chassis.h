@@ -29,7 +29,7 @@ public:
     void gyro(float& x, float& y, float& z) const;
     int speed() const; // m/s, aggregated over last second
     int range(const int sonar=0) const;
-    int encoderCount(const int encoder=0) const;
+    int encoderCount(Wheel wheel) const;
 
     unsigned long lastUpdateTs() const;
     bool isInitialized() const { return initialized; }
@@ -45,6 +45,8 @@ private:
 
     class HWImpl;
     HWImpl* impl;
+
+    int wheelToEncoder(Wheel wheel) const;
 };
 
 #endif

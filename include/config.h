@@ -25,6 +25,8 @@ const int STUCK_DECISION_THRESHOLD = 1000; // us
 const int DEFAULT_MOTOR_SPEED = 255; // x/255
 const int DIVERSION_HEADING = 90; // degrees; how much to turn when faced an obstacle
 
+const int TICKS_PER_METER = 196;
+
 const float SONAR_FOV = 0.26;
 const float SONAR_MIN = 0.03;
 const float SONAR_MAX = 1.0;
