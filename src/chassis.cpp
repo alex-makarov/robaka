@@ -16,7 +16,7 @@
 
 #define vLog Serial.println
 #ifndef vLog
-  #define vLog(x)
+#define vLog(x)
 #endif
 
 class Chassis::HWImpl {
@@ -48,79 +48,79 @@ public:
 };
 
 bool Chassis::HWImpl::initIMU() {
-  if (!gyro.begin()) {
-    vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
-    return false;
-  }
+	if (!gyro.begin()) {
+		vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
+		return false;
+	}
 
-  // Try to initialise and warn if we couldn't detect the chip
-  if (!imu.begin() || !accel.begin() || !mag.begin()) { 
-    vLog("Oops ... unable to initialize the IMU. Check your wiring!");
-    return false;
-  }
+	// Try to initialise and warn if we couldn't detect the chip
+	if (!imu.begin() || !accel.begin() || !mag.begin()) { 
+		vLog("Oops ... unable to initialize the IMU. Check your wiring!");
+		return false;
+	}
     
-  vLog("Found LSM303DLHC and L3GD20 IMU");
-  return true;
+	vLog("Found LSM303DLHC and L3GD20 IMU");
+	return true;
 }
 
 bool Chassis::HWImpl::initSonar() {
-  for (int i = 0; i < N_Sonars; i+=2) {
-    sonars[i] = new NewPing(SonarPins[i], SonarPins[i+1], MAX_SONAR_DISTANCE);
-  }
-  return true;
+	for (int i = 0; i < N_Sonars; i+=2) {
+		sonars[i] = new NewPing(SonarPins[i], SonarPins[i+1], MAX_SONAR_DISTANCE);
+	}
+	return true;
 }
 
 bool Chassis::HWImpl::initEncoders() {
-  for (int i = 0; i < N_Encoders; i++) {
-    pinMode(Encoders[i], INPUT);
-  }
-  attachInterrupts();
-  return true;
+	for (int i = 0; i < N_Encoders; i++) {
+		pinMode(Encoders[i], INPUT);
+	}
+	attachInterrupts();
+	return true;
 }
 
 void Chassis::HWImpl::attachInterrupts() {
- for (int i = 0; i < N_Encoders; i++) {
-    attachInterrupt(digitalPinToInterrupt(Encoders[i]), EncoderISRs[i], CHANGE);
-    pinMode(Encoders[i], INPUT);
-  }
+	for (int i = 0; i < N_Encoders; i++) {
+		attachInterrupt(digitalPinToInterrupt(Encoders[i]), EncoderISRs[i], CHANGE);
+		pinMode(Encoders[i], INPUT);
+	}
 }
 
 void Chassis::HWImpl::detachInterrupts() {
-  for (int i = 0; i < N_Encoders; i++) {
-      detachInterrupt(digitalPinToInterrupt(Encoders[i]));
-  }
+	for (int i = 0; i < N_Encoders; i++) {
+		detachInterrupt(digitalPinToInterrupt(Encoders[i]));
+	}
 }
 
 void Chassis::HWImpl::readIMU() {
 
 #ifdef IMU_DEBUG
-vLog ("IMU [roll, pitch, heading, x/y/z]");
+	vLog ("IMU [roll, pitch, heading, x/y/z]");
 #endif
 
-accel.getEvent(&accelEvent);
-mag.getEvent(&magEvent);
+	accel.getEvent(&accelEvent);
+	mag.getEvent(&magEvent);
 
-if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
-  #ifdef IMU_DEBUG
-  vLog(String(orientation.roll) + ", " +
-  String(orientation.pitch) + ", " +
-  String(orientation.heading));
-  #endif
-}
-
-gyro.getEvent(&gyroEvent);
+	if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
 #ifdef IMU_DEBUG
-vLog("Gyro x/y/z");
-vLog(String(gyroEvent.gyro.x) + ", " +
-    String(gyroEvent.gyro.y) + ", " +
-    String(gyroEvent.gyro.z));
+		vLog(String(orientation.roll) + ", " +
+			 String(orientation.pitch) + ", " +
+			 String(orientation.heading));
+#endif
+	}
+
+	gyro.getEvent(&gyroEvent);
+#ifdef IMU_DEBUG
+	vLog("Gyro x/y/z");
+	vLog(String(gyroEvent.gyro.x) + ", " +
+		 String(gyroEvent.gyro.y) + ", " +
+		 String(gyroEvent.gyro.z));
 #endif
 }
 
 void Chassis::HWImpl::readSonar() {
-  for (int i = 0; i < N_Sonars; i++) {
-    pings[i] = sonars[i]->ping_cm();
-  }
+	for (int i = 0; i < N_Sonars; i++) {
+		pings[i] = sonars[i]->ping_cm();
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -163,35 +163,35 @@ void Chassis::updateSensors() {
 //void Chassis::moveMotor(int motorId, int direction, int speed) {
 
 void Chassis::moveMotor (Wheel wheel, int speed) {
-  moveMotor(wheel, speed > 0 ? Forward : Backward, speed);
+	moveMotor(wheel, speed > 0 ? Forward : Backward, speed);
 }
 
 void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 
     int motorId = 0;
     switch (wheel) {
-        case FrontLeft: motorId = MOTOR_FWD_LEFT; break;
-        case FrontRight: motorId = MOTOR_FWD_RIGHT; break;
-        case RearLeft: motorId = MOTOR_REAR_LEFT; break;
-        case RearRight: motorId = MOTOR_REAR_RIGHT; break;
+	case FrontLeft: motorId = MOTOR_FWD_LEFT; break;
+	case FrontRight: motorId = MOTOR_FWD_RIGHT; break;
+	case RearLeft: motorId = MOTOR_REAR_LEFT; break;
+	case RearRight: motorId = MOTOR_REAR_RIGHT; break;
     }
     int _direction = direction == Forward ? FORWARD : BACKWARD;
 
-  // Mapping according to motor orientation in the chassis
-  switch(motorId) {
+	// Mapping according to motor orientation in the chassis
+	switch(motorId) {
     case MOTOR_REAR_RIGHT:
     case MOTOR_FWD_RIGHT:
-      if (_direction == FORWARD || _direction == BACKWARD) {
-        // Only remap motor direction for rotation, not for braking or coasting
-        impl->motor.motor(motorId, _direction == FORWARD ? BACKWARD : FORWARD, speed);
-      } else {
-        impl->motor.motor(motorId, _direction, speed);
-      }
-      break;
+		if (_direction == FORWARD || _direction == BACKWARD) {
+			// Only remap motor direction for rotation, not for braking or coasting
+			impl->motor.motor(motorId, _direction == FORWARD ? BACKWARD : FORWARD, speed);
+		} else {
+			impl->motor.motor(motorId, _direction, speed);
+		}
+		break;
     default:
-      impl->motor.motor(motorId, _direction, speed);
-      break;
-  }
+		impl->motor.motor(motorId, _direction, speed);
+		break;
+	}
 }
 
 int Chassis::heading() const {
@@ -238,10 +238,10 @@ unsigned long Chassis::lastUpdateTs() const {
 
 int Chassis::wheelToEncoder(Wheel wheel) const {
     switch (wheel) {
-        case FrontLeft: return 0;
-        case FrontRight: return 1;
-        case RearLeft: return 2;
-        case RearRight: return 3;
+	case FrontLeft: return 0;
+	case FrontRight: return 1;
+	case RearLeft: return 2;
+	case RearRight: return 3;
     }
     return 0;
 }
