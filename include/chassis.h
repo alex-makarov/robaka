@@ -21,6 +21,7 @@ public:
     bool init();
     void updateSensors();
 
+    void moveMotor (Wheel wheel, int speed);
     void moveMotor (Wheel wheel, Direction direction, int speed);
 
     int heading() const;

@@ -23,6 +23,6 @@ void setup()
 void loop() {
   if (robaka->isInitialized()) {
     robaka->updateSensors();
-    node.publishUpdates();
+    node.loop();
   }
 }

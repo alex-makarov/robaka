@@ -17,11 +17,16 @@ class RosNode {
 public:
     RosNode(Chassis& chassis);
 
-    void publishUpdates();
+    void loop();
+    
+    void rSubscriberCallback(const std_msgs::Float32& cmdMsg);
+    void lSubscriberCallback(const std_msgs::Float32& cmdMsg);
 
 private:
     // Change to 1,1,150,150 for Uno
     ros::NodeHandle_<ArduinoHardware, 6, 6, 150, 150> nh;
+
+    const int ticksPerMeter;
 
     sensor_msgs::Range rangeMsg;
     ros::Publisher rangePublisher;
@@ -39,11 +44,18 @@ private:
     ros::Publisher lWheelVelocityPublisher;
     ros::Publisher rWheelVelocityPublisher;
 
+    int lWheelTargetRate = 0;
+    int rWheelTargetRate = 0;
+
+    int leftMotorCmd = 0;
+    int rightMotorCmd = 0;
+
     // source: https://github.com/merose/ROSRobotControl/blob/master/ROSRobotControl.ino
     ros::Subscriber<std_msgs::Float32> lWheelTargetSub;
     ros::Subscriber<std_msgs::Float32> rWheelTargetSub;
 
     unsigned long lastUpdate;
+    unsigned long lastMotorCmdTime;
     
     const float Ku = .15;
     const float Tu = .1142857143;

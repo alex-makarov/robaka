@@ -161,6 +161,11 @@ void Chassis::updateSensors() {
 }
 
 //void Chassis::moveMotor(int motorId, int direction, int speed) {
+
+void Chassis::moveMotor (Wheel wheel, int speed) {
+  moveMotor(wheel, speed > 0 ? Forward : Backward, speed);
+}
+
 void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 
     int motorId = 0;
