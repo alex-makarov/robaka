@@ -44,25 +44,28 @@ public:
 };
 
 bool Chassis::HWImpl::initIMU() {
-	if (!gyro.begin()) {
+	if (!gyro.begin(GYRO_RANGE_250DPS, &Wire1)) {
 		vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
 		return false;
 	}
+	vLog(F("[OK] Gyro init"));
 
 	// Try to initialise and warn if we couldn't detect the chip
 	if (!imu.begin() || !accel.begin() || !mag.begin()) { 
 		vLog("Oops ... unable to initialize the IMU. Check your wiring!");
 		return false;
 	}
+	vLog(F("[OK] IMU init"));
     
-	vLog("Found LSM303DLHC and L3GD20 IMU");
+	vLog("[OK] Found LSM303DLHC and L3GD20 IMU");
 	return true;
 }
 
 bool Chassis::HWImpl::initSonar() {
-	for (int i = 0; i < N_Sonars; i+=2) {
-		sonars[i] = new NewPing(SonarPins[i], SonarPins[i+1], MAX_SONAR_DISTANCE);
+	for (int i = 0; i < N_Sonars; i++) {
+		sonars[i] = new NewPing(SonarPins[i*2], SonarPins[i*2+1], MAX_SONAR_DISTANCE);
 	}
+	vLog(F("[OK] Sonar init"));
 	return true;
 }
 
@@ -71,6 +74,7 @@ bool Chassis::HWImpl::initEncoders() {
 		pinMode(Encoders[i], INPUT);
 	}
 	attachInterrupts();
+	vLog(F("[OK] Encoders init"));
 	return true;
 }
 
@@ -88,35 +92,39 @@ void Chassis::HWImpl::detachInterrupts() {
 }
 
 void Chassis::HWImpl::readIMU() {
-
-#ifdef IMU_DEBUG
-	vLog ("IMU [roll, pitch, heading, x/y/z]");
-#endif
-
 	accel.getEvent(&accelEvent);
 	mag.getEvent(&magEvent);
 
 	if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
 #ifdef IMU_DEBUG
-		vLog(String(orientation.roll) + ", " +
+		vLog("[IMU] R,P,H,X,Y,Z = " +
+			 String(orientation.roll) + ", " +
 			 String(orientation.pitch) + ", " +
-			 String(orientation.heading));
+			 String(orientation.heading) + " ," +
+			 String(orientation.x) + ", " +
+			 String(orientation.y) + ", " +
+			 String(orientation.z));
 #endif
 	}
 
 	gyro.getEvent(&gyroEvent);
 #ifdef IMU_DEBUG
-	vLog("Gyro x/y/z");
-	vLog(String(gyroEvent.gyro.x) + ", " +
+	vLog("[Gyro] x,y,z = " + 
+		 String(gyroEvent.gyro.x) + ", " +
 		 String(gyroEvent.gyro.y) + ", " +
 		 String(gyroEvent.gyro.z));
 #endif
 }
 
 void Chassis::HWImpl::readSonar() {
+	String s;
 	for (int i = 0; i < N_Sonars; i++) {
 		pings[i] = sonars[i]->ping_cm();
+		s += String(pings[i]) + " ";
 	}
+#ifdef SONAR_DEBUG
+	vLog("[Sonar] " + s + "cm");
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

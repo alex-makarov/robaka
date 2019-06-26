@@ -31,9 +31,14 @@ RosNode :: RosNode(Chassis& _chassis)
 	   lWheelTargetSub("lwheel_vtarget", &lWheelTargetCallback),
 	   rWheelTargetSub("rwheel_vtarget", &rWheelTargetCallback),
 	   chassis(_chassis) {
-	
+
+
+//	vLog(F("1"));	
+	return;
 	nh.initNode();
+	vLog("2");	
 	broadcaster.init(nh);
+	vLog("3");
 
 	nh.advertise(rangePublisher);
 	nh.advertise(lWheelPublisher);

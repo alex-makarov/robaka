@@ -1,12 +1,21 @@
+#ifndef _CONFIG_H
+#define _CONFIG_H
+
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
 #define MOVE_MOTORS 1
 
-//#undef IMU_DEBUG
-#define IMU_DEBUG
+#undef IMU_DEBUG
+//#define IMU_DEBUG
 
-const int MAX_SONAR_DISTANCE  = 300; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-const int SERIAL_SPEED        = 57600;
+#undef SONAR_DEBUG
+//#define SONAR_DEBUG
+
+#undef ENCODER_DEBUG
+//#define ENCODER_DEBUG
+
+const int MAX_SONAR_DISTANCE  = 100; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+const int SERIAL_SPEED        = 9600; //57600;
 const int BLUETOOTH_SPEED     = 9600;
 
 const int RANGE_UPDATE_INTERVAL = 50; // ms
@@ -35,3 +44,5 @@ const int MAX_MOTOR_CMD = 255;
 const float SONAR_FOV = 0.26;
 const float SONAR_MIN = 0.03;
 const float SONAR_MAX = 1.0;
+
+#endif
