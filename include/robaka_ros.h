@@ -3,6 +3,8 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int16.h>
 #include <sensor_msgs/Range.h>
+#include <sensor_msgs/Imu.h>
+#include <tf/transform_broadcaster.h>
 #include <SimplePID.h>
 
 #ifndef _ROBAKA_ROS_H
@@ -24,8 +26,8 @@ public:
 
 private:
     // Change to 1,1,150,150 for Uno
-    ros::NodeHandle_<ArduinoHardware, 6, 6, 150, 150> nh;
-
+//    ros::NodeHandle_<ArduinoHardware, 6, 6, 150, 150> nh;
+    ros::NodeHandle nh;
     const int ticksPerMeter;
 
     sensor_msgs::Range rangeMsg;
@@ -38,6 +40,13 @@ private:
     ros::Publisher  rWheelPublisher;
     unsigned long lWheelLast;
     unsigned long rWheelLast;
+
+    sensor_msgs::Imu imuMsg;
+    ros::Publisher imuPublisher;
+    geometry_msgs::TransformStamped t;
+    tf::TransformBroadcaster broadcaster;
+    const char* imuFrameId = "/base_link";
+    const char* childFrameId = "/child";
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;

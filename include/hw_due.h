@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "utils.h"
 
 #ifndef _HW_DUE_H
 #define _HW_DUE_H
@@ -37,18 +38,22 @@ const int N_Encoders = 4;
 void EncoderISR0() {
     ++EncoderCounts[0];
     EncoderUpdates[0] = millis();
+    vLog(F("Encoder 0"));
 }
 void EncoderISR1() {
     ++EncoderCounts[1];
     EncoderUpdates[1] = millis();
+    vLog(F("Encoder 1"));
 }
 void EncoderISR2() {
     ++EncoderCounts[2];
     EncoderUpdates[2] = millis();
+    vLog(F("Encoder 2"));
 }
 void EncoderISR3() {
     ++EncoderCounts[3];
     EncoderUpdates[3] = millis();
+    vLog(F("Encoder 3"));
 }
 
 const ISR EncoderISRs[] = {EncoderISR0, EncoderISR1, EncoderISR2, EncoderISR3};

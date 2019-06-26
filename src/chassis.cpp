@@ -7,16 +7,12 @@
 
 #include "chassis.h"
 #include "config.h"
+#include "utils.h"
 
 #ifdef ARDUINO_AVR_UNO
 #include "hw_uno.h"
 #elif ARDUINO_SAM_DUE
 #include "hw_due.h"
-#endif
-
-#define vLog Serial.println
-#ifndef vLog
-#define vLog(x)
 #endif
 
 class Chassis::HWImpl {
@@ -206,11 +202,19 @@ float Chassis::pitch() const {
     return impl->orientation.pitch;
 }
 
-void Chassis::gyro(float& x, float& y, float& z) const {
-    x = impl->gyroEvent.gyro.x;
-    y = impl->gyroEvent.gyro.y;
-    z = impl->gyroEvent.gyro.z;
+vector_t Chassis::gyro() const {
+	return { impl->gyroEvent.gyro.x, impl->gyroEvent.gyro.y, impl->gyroEvent.gyro.z };
 }
+
+vector_t Chassis::orientation() const {
+	return { impl->orientation.x, impl->orientation.y, impl->orientation.z };
+}
+
+vector_t Chassis::linearAcceleration() const {
+	return { impl->accelEvent.acceleration.x, impl->accelEvent.acceleration.y, impl->accelEvent.acceleration.z };
+}
+
+
 
 int Chassis::speed() const {
     return -1; //TODO

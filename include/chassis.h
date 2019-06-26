@@ -14,6 +14,12 @@ enum Wheel {
     RearRight
 };
 
+struct vector_t {
+    float x;
+    float y;
+    float z;
+};
+
 class Chassis {
 public:
     static Chassis* instance();
@@ -27,7 +33,9 @@ public:
     int heading() const;
     float roll() const;
     float pitch() const;
-    void gyro(float& x, float& y, float& z) const;
+    vector_t orientation() const;
+    vector_t gyro() const;
+    vector_t linearAcceleration() const;
     int speed() const; // m/s, aggregated over last second
     int range(const int sonar=0) const;
     int encoderCount(Wheel wheel) const;
