@@ -94,9 +94,11 @@ void Chassis::HWImpl::detachInterrupts() {
 void Chassis::HWImpl::readIMU() {
 	accel.getEvent(&accelEvent);
 	mag.getEvent(&magEvent);
+	gyro.getEvent(&gyroEvent);
 
-	if (imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation)) {
+	bool success = imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation);
 #ifdef IMU_DEBUG
+	if (success) {
 		vLog("[IMU] R,P,H,X,Y,Z = " +
 			 String(orientation.roll) + ", " +
 			 String(orientation.pitch) + ", " +
@@ -104,26 +106,28 @@ void Chassis::HWImpl::readIMU() {
 			 String(orientation.x) + ", " +
 			 String(orientation.y) + ", " +
 			 String(orientation.z));
-#endif
 	}
-
-	gyro.getEvent(&gyroEvent);
-#ifdef IMU_DEBUG
 	vLog("[Gyro] x,y,z = " + 
 		 String(gyroEvent.gyro.x) + ", " +
 		 String(gyroEvent.gyro.y) + ", " +
 		 String(gyroEvent.gyro.z));
+#else
+	(void)success;
 #endif
 }
 
 void Chassis::HWImpl::readSonar() {
+#ifdef SONAR_DEBUG
 	String s;
 	for (int i = 0; i < N_Sonars; i++) {
 		pings[i] = sonars[i]->ping_cm();
 		s += String(pings[i]) + " ";
 	}
-#ifdef SONAR_DEBUG
 	vLog("[Sonar] " + s + "cm");
+#else
+	for (int i = 0; i < N_Sonars; i++) {
+		pings[i] = sonars[i]->ping_cm();
+	}
 #endif
 }
 
@@ -163,8 +167,6 @@ void Chassis::updateSensors() {
     impl->attachInterrupts();
     lastUpdate = millis();
 }
-
-//void Chassis::moveMotor(int motorId, int direction, int speed) {
 
 void Chassis::moveMotor (Wheel wheel, int speed) {
 	moveMotor(wheel, speed > 0 ? Forward : Backward, speed);
@@ -221,8 +223,6 @@ vector_t Chassis::orientation() const {
 vector_t Chassis::linearAcceleration() const {
 	return { impl->accelEvent.acceleration.x, impl->accelEvent.acceleration.y, impl->accelEvent.acceleration.z };
 }
-
-
 
 int Chassis::speed() const {
     return -1; //TODO
