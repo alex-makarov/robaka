@@ -9,10 +9,8 @@
 
 typedef void (*ISR)();
 
-// Pins used on Arduino UNO
-// Bluetooth HM-10
-const unsigned int BLUETOOTH_TX_PIN = 51;
-const unsigned int BLUETOOTH_RX_PIN = 50;
+// Pins used on Arduino DUE
+
 // Echo sonar HC-SR04
 const unsigned int TRIGGER_1_PIN = A2; 
 const unsigned int ECHO_1_PIN    = A3;
@@ -66,7 +64,6 @@ void EncoderISR3() {
 }
 
 const ISR EncoderISRs[] = {EncoderISR0, EncoderISR1, EncoderISR2, EncoderISR3};
-
 
 // TO ADD: ESP8266
 
