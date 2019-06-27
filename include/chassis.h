@@ -2,23 +2,7 @@
 #ifndef _CHASSIS_H
 #define _CHASSIS_H 1
 
-enum Direction {
-    Forward = 0,
-    Backward
-};
-
-enum Wheel {
-    FrontLeft = 0,
-    FrontRight,
-    RearLeft,
-    RearRight
-};
-
-struct vector_t {
-    float x;
-    float y;
-    float z;
-};
+#include "common.h"
 
 class Chassis {
 public:
