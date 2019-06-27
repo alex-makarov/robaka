@@ -4,6 +4,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_9DOF.h>
 #include <SimplePID.h>
+#include <DueTimer.h>
 
 #include "chassis.h"
 #include "config.h"
@@ -41,6 +42,11 @@ public:
 
     void attachInterrupts();
     void detachInterrupts();
+
+	void timerCallback();
+
+	volatile unsigned long lastEncoderValues[N_Encoders]; // updated from the interrupt
+    volatile float wheelSpeeds[N_Encoders];
 };
 
 bool Chassis::HWImpl::initIMU() {
@@ -131,14 +137,21 @@ void Chassis::HWImpl::readSonar() {
 #endif
 }
 
-///////////////////////////////////////////////////////////////////////////////
+void Chassis::HWImpl::timerCallback() {
+	for (int i = 0; i < N_Encoders; i++) {
+		wheelSpeeds[i] = (EncoderCounts[i] - lastEncoderValues[i]) / TICKS_PER_METER;
+		lastEncoderValues[i] = EncoderCounts[i];
+	}
+}
 
+///////////////////////////////////////////////////////////////////////////////
 
 Chassis* Chassis::_instance = 0;
 
 Chassis* Chassis::instance() {
     if (_instance == 0) {
         _instance = new Chassis();
+		Timer.getAvailable().attachInterrupt(timerCallback).setFrequency(1).start(1E6);
     }
 
     return _instance;
@@ -151,6 +164,10 @@ Chassis::Chassis() {
 
 Chassis::~Chassis() {
     delete impl;
+}
+
+void Chassis::timerCallback() {
+	Chassis::instance()->impl->timerCallback();
 }
 
 bool Chassis::init() {
@@ -224,8 +241,11 @@ vector_t Chassis::linearAcceleration() const {
 	return { impl->accelEvent.acceleration.x, impl->accelEvent.acceleration.y, impl->accelEvent.acceleration.z };
 }
 
-int Chassis::speed() const {
-    return -1; //TODO
+float Chassis::speedMs() const {
+	float s = 0.0;
+	for (int i = 0; i < N_Encoders; i++)
+		s += impl->wheelSpeeds[i];
+	return s / N_Encoders;
 }
 
 int Chassis::range(const int sonar) const {

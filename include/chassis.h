@@ -36,7 +36,7 @@ public:
     vector_t orientation() const;
     vector_t gyro() const;
     vector_t linearAcceleration() const;
-    int speed() const; // m/s, aggregated over last second
+    float speedMs() const; // m/s, aggregated over last second
     int range(const int sonar=0) const;
     int encoderCount(Wheel wheel) const;
 
@@ -46,7 +46,9 @@ public:
 private:
     Chassis();
     ~Chassis();
-    
+
+    static void timerCallback();
+
     static Chassis* _instance;
 
     unsigned long lastUpdate;
