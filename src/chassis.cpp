@@ -277,25 +277,3 @@ int Chassis::wheelToEncoder(Wheel wheel) const {
     }
     return 0;
 }
-
-
-//TODO:
-// bool isStuck() {
-//   unsigned long now = millis();
-//   int wheelsStuck = 0;
-
-//   for (int i = 0; i < N_Encoders; i++) {
-//     if (now - EncoderUpdates[i] >= STUCK_UPDATE_THRESHOLD)
-//       ++wheelsStuck;
-//   }  
-
-//   bool stuck = wheelsStuck > 0;
-
-//   if (stuck && StuckSince == 0) {
-//     StuckSince = now;
-//   } else if (!stuck) {
-//     StuckSince = 0;
-//   }
-
-//   return stuck && now - StuckSince >= STUCK_DECISION_THRESHOLD;
-// }
