@@ -49,8 +49,8 @@ private:
     ros::Publisher imuPublisher;
     geometry_msgs::TransformStamped t;
     tf::TransformBroadcaster broadcaster;
-    const char* imuFrameId = "/base_link";
-    const char* childFrameId = "/child";
+    const char* baseFrameId = "/base_link";
+    const char* childFrameId = "/imu";
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;

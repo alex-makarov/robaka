@@ -88,18 +88,28 @@ void RosNode::loop() {
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
 
-	t.header.frame_id = imuFrameId;
+	t.header.frame_id = baseFrameId;
+	t.child_frame_id = middleSonarFrameId;
+	t.transform.translation.x = 0.5;
+	t.transform.rotation.x = 0; // chassis.orientation().x;
+	t.transform.rotation.y = 0; // chassis.orientation().y;
+	t.transform.rotation.z = 0; // chassis.orientation().z;
+	t.transform.rotation.w = 1; // 0;
+	t.header.stamp = nh.now();
+	broadcaster.sendTransform(t);
+
+	t.header.frame_id = baseFrameId;
 	t.child_frame_id = childFrameId;
 	t.transform.translation.x = 0.5;
-	t.transform.rotation.x = chassis.orientation().x;
-	t.transform.rotation.y = chassis.orientation().y;
-	t.transform.rotation.z = chassis.orientation().z;
-	t.transform.rotation.w = 0;
+	t.transform.rotation.x = 0; // chassis.orientation().x;
+	t.transform.rotation.y = 0; // chassis.orientation().y;
+	t.transform.rotation.z = 0; // chassis.orientation().z;
+	t.transform.rotation.w = 1; // 0;
 	t.header.stamp = nh.now();
 	broadcaster.sendTransform(t);
 
 	imuMsg.header.stamp = nh.now();
-	imuMsg.header.frame_id = imuFrameId;
+	imuMsg.header.frame_id = baseFrameId;
 	imuMsg.orientation.x = chassis.orientation().x;
 	imuMsg.orientation.y = chassis.orientation().y;
 	imuMsg.orientation.z = chassis.orientation().z;
