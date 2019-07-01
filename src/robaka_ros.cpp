@@ -2,6 +2,7 @@
 #include "chassis.h"
 #include "config.h"
 #include "utils.h"
+#include <tf/tf.h>
 
 // FIXME: remove this as soon as rosserial_arduino>=0.8.0 is avaialable,
 // which supports member functions for callbacks
@@ -88,9 +89,13 @@ void RosNode::loop() {
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
 
+	// middle
 	t.header.frame_id = baseFrameId;
 	t.child_frame_id = middleSonarFrameId;
-	t.transform.translation.x = 0.5;
+	t.transform.translation.x = -0.12;
+	t.transform.translation.y = 0;
+	t.transform.translation.z = 0;
+	
 	t.transform.rotation.x = 0; // chassis.orientation().x;
 	t.transform.rotation.y = 0; // chassis.orientation().y;
 	t.transform.rotation.z = 0; // chassis.orientation().z;
@@ -98,9 +103,32 @@ void RosNode::loop() {
 	t.header.stamp = nh.now();
 	broadcaster.sendTransform(t);
 
+	// left
+	t.header.frame_id = baseFrameId;
+	t.child_frame_id = leftSonarFrameId;
+	t.transform.translation.x = -0.12;
+	t.transform.translation.y = -0.06;
+	t.transform.translation.z = 0;
+	t.transform.rotation = tf::createQuaternionFromYaw(-0.785);
+	t.header.stamp = nh.now();
+	broadcaster.sendTransform(t);
+
+	// right
+	t.header.frame_id = baseFrameId;
+	t.child_frame_id = rightSonarFrameId;
+	t.transform.translation.x = -0.12;
+	t.transform.translation.y = 0.06;
+	t.transform.translation.z = 0;
+	t.transform.rotation = tf::createQuaternionFromYaw(0.785);
+	t.header.stamp = nh.now();
+	broadcaster.sendTransform(t);
+
+	// IMU TF
 	t.header.frame_id = baseFrameId;
 	t.child_frame_id = childFrameId;
-	t.transform.translation.x = 0.5;
+	t.transform.translation.x = 0.12;
+	t.transform.translation.y = 0;
+	t.transform.translation.z = 0.14;
 	t.transform.rotation.x = 0; // chassis.orientation().x;
 	t.transform.rotation.y = 0; // chassis.orientation().y;
 	t.transform.rotation.z = 0; // chassis.orientation().z;
@@ -110,9 +138,10 @@ void RosNode::loop() {
 
 	imuMsg.header.stamp = nh.now();
 	imuMsg.header.frame_id = baseFrameId;
-	imuMsg.orientation.x = chassis.orientation().x;
-	imuMsg.orientation.y = chassis.orientation().y;
-	imuMsg.orientation.z = chassis.orientation().z;
+	// imuMsg.orientation.x = chassis.orientation().x;
+	// imuMsg.orientation.y = chassis.orientation().y;
+	// imuMsg.orientation.z = chassis.orientation().z;
+	imuMsg.orientation = tf::createQuaternionFromYaw(chassis.yaw());
 	imuMsg.angular_velocity.x = chassis.gyro().x;
 	imuMsg.angular_velocity.y = chassis.gyro().y;
 	imuMsg.angular_velocity.z = chassis.gyro().z;

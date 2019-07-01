@@ -234,6 +234,10 @@ int Chassis::heading() const {
     return (int)impl->orientation.heading;
 }
 
+float Chassis::yaw() const {
+	return impl->orientation.heading * PI / 180.0;
+}
+
 float Chassis::roll() const {
     return impl->orientation.roll;
 }

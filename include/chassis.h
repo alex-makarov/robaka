@@ -15,6 +15,7 @@ public:
     void moveMotor (Wheel wheel, Direction direction, int speed);
 
     int heading() const;
+    float yaw() const;
     float roll() const;
     float pitch() const;
     vector_t orientation() const;
