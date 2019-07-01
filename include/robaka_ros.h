@@ -42,8 +42,8 @@ private:
     std_msgs::Int16 rWheelMsg;
     ros::Publisher  lWheelPublisher;
     ros::Publisher  rWheelPublisher;
-    unsigned long lWheelLast;
-    unsigned long rWheelLast;
+    long lWheelLast;
+    long rWheelLast;
 
     sensor_msgs::Imu imuMsg;
     ros::Publisher imuPublisher;
@@ -73,9 +73,9 @@ private:
     const float Ku = .15;
     const float Tu = .1142857143;
 
-    const float Kp = 0.6*Ku;
-    const float Ki = 2*Kp/Tu;
-    const float Kd = Kp*Tu/8;
+    const float Kp = 1; //0.6*Ku;
+    const float Ki = 0; // 2*Kp/Tu;
+    const float Kd = 0; //Kp*Tu/8;
 
     SimplePID leftController = SimplePID(Kp, Ki, Kd);
     SimplePID rightController = SimplePID(Kp, Ki, Kd);

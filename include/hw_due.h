@@ -28,41 +28,43 @@ const unsigned int SONAR_RIGHT = 2;
 
 // Encoders
 const unsigned int ENCODER_1_PIN = 46; // LEFT REAR
-const unsigned int ENCODER_4_PIN = 47; // RIGHT FRONT
+const unsigned int ENCODER_4_PIN = 47; // RIGHT REAR
 const unsigned int ENCODER_2_PIN = 48; // LEFT FRONT
-const unsigned int ENCODER_3_PIN = 49; // RIGHT REAR
+const unsigned int ENCODER_3_PIN = 49; // RIGHT FRONT
 
 const unsigned int Encoders[] = {ENCODER_1_PIN, ENCODER_2_PIN, ENCODER_3_PIN, ENCODER_4_PIN};
 volatile unsigned long EncoderUpdates[] = {0,0,0,0};
-volatile unsigned long EncoderCounts[] = {0,0,0,0};
+volatile long EncoderCounts[] = {0,0,0,0};
+int EncoderDirections[] = {1,1,1,1};
 const int N_Encoders = 4;
 
 void EncoderISR0() {
-    ++EncoderCounts[0];
+    EncoderCounts[0] += EncoderDirections[0];
     EncoderUpdates[0] = millis();
 #ifdef ENCODER_DEBUG
-    vLog(F("Encoder 0"));
+    vLog("Encoder 0" + String(EncoderCounts[0]));
 #endif
 }
 void EncoderISR1() {
-    ++EncoderCounts[1];
+    EncoderCounts[1] += EncoderDirections[1];
     EncoderUpdates[1] = millis();
 #ifdef ENCODER_DEBUG
-    vLog(F("Encoder 1"));
+    vLog("Encoder 1" + String(EncoderCounts[1]));
 #endif
 }
 void EncoderISR2() {
-    ++EncoderCounts[2];
+    EncoderCounts[2] += EncoderDirections[2];
     EncoderUpdates[2] = millis();
 #ifdef ENCODER_DEBUG
-    vLog(F("Encoder 2"));
+    vLog("Encoder 2" + String(EncoderCounts[2]));
 #endif
 }
 void EncoderISR3() {
     ++EncoderCounts[3];
+    EncoderCounts[3] += EncoderDirections[3];
     EncoderUpdates[3] = millis();
 #ifdef ENCODER_DEBUG
-    vLog(F("Encoder 3"));
+    vLog("Encoder 3" + String(EncoderCounts[3]));
 #endif
 }
 

@@ -22,7 +22,7 @@ public:
     vector_t linearAcceleration() const;
     float speedMs() const; // m/s, aggregated over last second
     int range(const int sonar=0) const;
-    int encoderCount(Wheel wheel) const;
+    long encoderCount(Wheel wheel) const;
 
     unsigned long lastUpdateTs() const;
     bool isInitialized() const { return initialized; }

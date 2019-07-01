@@ -111,8 +111,8 @@ void RosNode::loop() {
 	imuMsg.linear_acceleration.z = chassis.linearAcceleration().z;
 	imuPublisher.publish(&imuMsg);
 
-    unsigned long lWheel = 0.5*((int)chassis.encoderCount(FrontLeft) + (int)chassis.encoderCount(RearLeft));
-    unsigned long rWheel = 0.5*((int)chassis.encoderCount(FrontRight) + (int)chassis.encoderCount(RearRight));
+	long lWheel = 0.5*(chassis.encoderCount(FrontLeft) + chassis.encoderCount(RearLeft));
+    long rWheel = 0.5*(chassis.encoderCount(FrontRight) + chassis.encoderCount(RearRight));
 
     lWheelMsg.data = lWheel;
     rWheelMsg.data = rWheel;
@@ -142,6 +142,8 @@ void RosNode::loop() {
 	if (rightMotorCmd > 0) {
 		rightMotorCmd = max(rightMotorCmd, MIN_MOTOR_CMD);
 	}
+
+//	vLog("L,R: " + String(lWheelTargetRate) + " " + String(rWheelTargetRate));
 
 	// Coast to a stop if target is zero.
 	if (lWheelTargetRate == 0) {

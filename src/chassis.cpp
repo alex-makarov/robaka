@@ -45,7 +45,7 @@ public:
 
 	void timerCallback();
 
-	volatile unsigned long lastEncoderValues[N_Encoders]; // updated from the interrupt
+	volatile long lastEncoderValues[N_Encoders]; // updated from the interrupt
     volatile float wheelSpeeds[N_Encoders];
 };
 
@@ -186,7 +186,7 @@ void Chassis::updateSensors() {
 }
 
 void Chassis::moveMotor (Wheel wheel, int speed) {
-	moveMotor(wheel, speed > 0 ? Forward : Backward, speed);
+	moveMotor(wheel, speed >= 0 ? Forward : Backward, speed);
 }
 
 void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
@@ -200,9 +200,16 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
     }
     int _direction = direction == Forward ? FORWARD : BACKWARD;
 
-#ifdef MOTOR_DEBUG
+	EncoderDirections[wheelToEncoder(wheel)] = (_direction == FORWARD) ? 1 : -1;
+
+	if (speed == 0) {
+		_direction = RELEASE;
+	}
+	int _speed = abs(speed);
+
+	#ifdef MOTOR_DEBUG
 	vLog("M" + String(motorId) + " <" + String(direction) + "> := " + String(speed));
-#endif
+	#endif
 
 	// Mapping according to motor orientation in the chassis
 #ifdef MOVE_MOTORS
@@ -211,13 +218,13 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
     case MOTOR_FWD_RIGHT:
 		if (_direction == FORWARD || _direction == BACKWARD) {
 			// Only remap motor direction for rotation, not for braking or coasting
-			impl->motor.motor(motorId, _direction == FORWARD ? BACKWARD : FORWARD, speed);
+			impl->motor.motor(motorId, _direction == FORWARD ? BACKWARD : FORWARD, _speed);
 		} else {
-			impl->motor.motor(motorId, _direction, speed);
+			impl->motor.motor(motorId, _direction, _speed);
 		}
 		break;
     default:
-		impl->motor.motor(motorId, _direction, speed);
+		impl->motor.motor(motorId, _direction, _speed);
 		break;
 	}
 #endif
@@ -261,7 +268,7 @@ int Chassis::range(const int sonar) const {
     return impl->pings[sonar];
 }
 
-int Chassis::encoderCount(Wheel wheel) const {
+long Chassis::encoderCount(Wheel wheel) const {
     int encoder = wheelToEncoder(wheel);
 
     if (encoder < 0 || encoder > N_Encoders-1)
@@ -276,9 +283,9 @@ unsigned long Chassis::lastUpdateTs() const {
 
 int Chassis::wheelToEncoder(Wheel wheel) const {
     switch (wheel) {
-	case FrontLeft: return 0;
-	case FrontRight: return 1;
-	case RearLeft: return 2;
+	case FrontLeft: return 1;
+	case FrontRight: return 2;
+	case RearLeft: return 0;
 	case RearRight: return 3;
     }
     return 0;
