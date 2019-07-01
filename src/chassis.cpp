@@ -200,7 +200,12 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
     }
     int _direction = direction == Forward ? FORWARD : BACKWARD;
 
+#ifdef MOTOR_DEBUG
+	vLog("M" + String(motorId) + " <" + String(direction) + "> := " + String(speed));
+#endif
+
 	// Mapping according to motor orientation in the chassis
+#ifdef MOVE_MOTORS
 	switch(motorId) {
     case MOTOR_REAR_RIGHT:
     case MOTOR_FWD_RIGHT:
@@ -215,6 +220,7 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 		impl->motor.motor(motorId, _direction, speed);
 		break;
 	}
+#endif
 }
 
 int Chassis::heading() const {

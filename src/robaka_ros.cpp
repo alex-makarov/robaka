@@ -33,8 +33,8 @@ RosNode :: RosNode(Chassis& _chassis)
 	   chassis(_chassis) {
 
 
-//	vLog(F("1"));	
-	return;
+	vLog(F("1"));	
+//	return;
 	nh.initNode();
 	vLog("2");	
 	broadcaster.init(nh);
@@ -63,12 +63,16 @@ RosNode :: RosNode(Chassis& _chassis)
 	}
 	_rosnode = this;
 
-	while(!nh.connected()) {
+	vLog(F("set singleton"));	
+
+//	while(!nh.connected()) {
 		nh.spinOnce();
-	}
+//	}
 
 	lastUpdate = micros();
 	lastMotorCmdTime = millis();
+
+	vLog(F("end-of-constructor"));	
 }
 
 void RosNode::loop() {

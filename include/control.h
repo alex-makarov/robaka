@@ -2,6 +2,7 @@
 #define _CONTROL_H
 
 #include <functional>
+#include <queue>
 #include "common.h"
 
 class Chassis;
@@ -22,6 +23,21 @@ public:
 
     // Reset the command queue
     void reset();
+
+private:
+    struct command {
+        enum {
+            Drive = 0,
+            Turn,
+            Stop
+        } action;
+        union {
+            float angle;
+            unsigned long timeMillis;
+        };
+    };
+
+    std::queue<command> commands;
 };
 
 #endif

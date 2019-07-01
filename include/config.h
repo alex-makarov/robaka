@@ -3,7 +3,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration
-#define MOVE_MOTORS 1
+#define MOVE_MOTORS 0
 
 #undef IMU_DEBUG
 //#define IMU_DEBUG
@@ -13,6 +13,9 @@
 
 #undef ENCODER_DEBUG
 //#define ENCODER_DEBUG
+
+#undef MOTOR_DEBUG
+//#define MOTOR_DEBUG
 
 const int MAX_SONAR_DISTANCE  = 100; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 const int SERIAL_SPEED        = 9600; //57600;
