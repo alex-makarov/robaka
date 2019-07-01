@@ -40,7 +40,7 @@ RosNode :: RosNode(Chassis& _chassis)
 	nh.advertise(leftRangePublisher);
 	nh.advertise(middleRangePublisher);
 	nh.advertise(rightRangePublisher);
-/* 	nh.advertise(lWheelPublisher);
+	nh.advertise(lWheelPublisher);
 	nh.advertise(rWheelPublisher);
 	nh.advertise(lWheelVelocityPublisher);
 	nh.advertise(rWheelVelocityPublisher);
@@ -48,7 +48,7 @@ RosNode :: RosNode(Chassis& _chassis)
 
 	nh.subscribe(lWheelTargetSub);
 	nh.subscribe(rWheelTargetSub);
- */
+
 	rangeMsg.radiation_type = sensor_msgs::Range::ULTRASOUND;
 	rangeMsg.header.frame_id = leftSonarFrameId;
 	rangeMsg.field_of_view = SONAR_FOV;
@@ -87,11 +87,6 @@ void RosNode::loop() {
     rangeMsg.range = chassis.range(2); ///100.0;
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
-
-	///////!!!!!<	
-	nh.spinOnce();
-	delay(250);
-	return;
 
 	t.header.frame_id = imuFrameId;
 	t.child_frame_id = childFrameId;
@@ -163,6 +158,7 @@ void RosNode::loop() {
 
     lWheelLast = lWheel;
     rWheelLast = rWheel;
+	lastUpdate = now;
     nh.spinOnce();
 }
 
