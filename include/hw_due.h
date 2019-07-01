@@ -22,6 +22,9 @@ const int N_Sonars = 3;
 const unsigned int SonarPins[] = { TRIGGER_1_PIN, ECHO_1_PIN,
                                 TRIGGER_2_PIN, ECHO_2_PIN,
                                 TRIGGER_3_PIN, ECHO_3_PIN };
+const unsigned int SONAR_LEFT = 0;
+const unsigned int SONAR_MIDDLE = 1;
+const unsigned int SONAR_RIGHT = 2;
 
 // Encoders
 const unsigned int ENCODER_1_PIN = 46; // LEFT REAR

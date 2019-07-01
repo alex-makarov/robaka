@@ -21,8 +21,10 @@ void rWheelTargetCallback(const std_msgs::Float32& cmdMsg) {
 }
 
 RosNode :: RosNode(Chassis& _chassis)
-	:  ticksPerMeter(TICKS_PER_METER),
-	   rangePublisher("sonar", &rangeMsg),
+	:  	ticksPerMeter(TICKS_PER_METER),
+	   	leftRangePublisher("sonar", &rangeMsg),
+		middleRangePublisher("sonar", &rangeMsg),
+		rightRangePublisher("sonar", &rangeMsg),	   	   
 	   lWheelPublisher("lwheel", &lWheelMsg),
 	   rWheelPublisher("rwheel", &rWheelMsg),
 	   imuPublisher("imu_data", &imuMsg),
@@ -32,16 +34,13 @@ RosNode :: RosNode(Chassis& _chassis)
 	   rWheelTargetSub("rwheel_vtarget", &rWheelTargetCallback),
 	   chassis(_chassis) {
 
-
-	vLog(F("1"));	
-//	return;
 	nh.initNode();
-	vLog("2");	
 	broadcaster.init(nh);
-	vLog("3");
 
-	nh.advertise(rangePublisher);
-	nh.advertise(lWheelPublisher);
+	nh.advertise(leftRangePublisher);
+	nh.advertise(middleRangePublisher);
+	nh.advertise(rightRangePublisher);
+/* 	nh.advertise(lWheelPublisher);
 	nh.advertise(rWheelPublisher);
 	nh.advertise(lWheelVelocityPublisher);
 	nh.advertise(rWheelVelocityPublisher);
@@ -49,9 +48,9 @@ RosNode :: RosNode(Chassis& _chassis)
 
 	nh.subscribe(lWheelTargetSub);
 	nh.subscribe(rWheelTargetSub);
-
+ */
 	rangeMsg.radiation_type = sensor_msgs::Range::ULTRASOUND;
-	rangeMsg.header.frame_id = frameId;
+	rangeMsg.header.frame_id = leftSonarFrameId;
 	rangeMsg.field_of_view = SONAR_FOV;
 	rangeMsg.min_range = SONAR_MIN;
 	rangeMsg.max_range = SONAR_MAX;
@@ -63,24 +62,36 @@ RosNode :: RosNode(Chassis& _chassis)
 	}
 	_rosnode = this;
 
-	vLog(F("set singleton"));	
+	delay(1000);
 
 //	while(!nh.connected()) {
-		nh.spinOnce();
+//		nh.spinOnce();
 //	}
 
 	lastUpdate = micros();
 	lastMotorCmdTime = millis();
-
-	vLog(F("end-of-constructor"));	
 }
 
 void RosNode::loop() {
     unsigned long now = micros();
 
-    rangeMsg.range = chassis.range()/100.0;
+    rangeMsg.range = chassis.range();///100.0;
+	rangeMsg.header.frame_id = leftSonarFrameId;
     rangeMsg.header.stamp = nh.now();
-    rangePublisher.publish(&rangeMsg);
+    leftRangePublisher.publish(&rangeMsg);
+
+    rangeMsg.range = chassis.range(1); ///100.0;
+	rangeMsg.header.frame_id = middleSonarFrameId;
+    middleRangePublisher.publish(&rangeMsg);
+
+    rangeMsg.range = chassis.range(2); ///100.0;
+	rangeMsg.header.frame_id = rightSonarFrameId;
+    rightRangePublisher.publish(&rangeMsg);
+
+	///////!!!!!<	
+	nh.spinOnce();
+	delay(250);
+	return;
 
 	t.header.frame_id = imuFrameId;
 	t.child_frame_id = childFrameId;

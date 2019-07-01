@@ -31,8 +31,12 @@ private:
     const int ticksPerMeter;
 
     sensor_msgs::Range rangeMsg;
-    ros::Publisher rangePublisher;
-    const char* frameId = "/sonar";
+    ros::Publisher leftRangePublisher;
+    ros::Publisher middleRangePublisher;
+    ros::Publisher rightRangePublisher;
+    const char* leftSonarFrameId = "/sonarleft";
+    const char* middleSonarFrameId = "/sonarmiddle";
+    const char* rightSonarFrameId = "/sonarright";
 
     std_msgs::Int16 lWheelMsg;
     std_msgs::Int16 rWheelMsg;
