@@ -10,3 +10,6 @@ WHEELS
 
   100 state changes = 2.5 full revolutions = 51.5 cm
   200 state changes = 5 full revolutions = 103 cm
+
+
+Connectivity: ESP 8266 with https://github.com/jeelabs/esp-link v 3.0.14 configured for my WLAN.

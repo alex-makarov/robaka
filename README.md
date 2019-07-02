@@ -40,3 +40,13 @@ class ArduinoHardware {
 
 
 ---------------------
+
+ESP8266
+link https://github.com/jeelabs/esp-link
+flashing https://www.xgadget.de/anleitung/esp-01-esp8266-programmer-so-funktioniert-der-flashvorgang/
+esp-link-v2.2.3
+esptool.py --port /dev/ttyUSB0 --baud 115200 erase_flash
+esptool.py --port /dev/ttyUSB0 --baud 57600 write_flash -fs 4m -ff 40m     0x00000 boot_v1.5.bin 0x1000 user1.bin 0x7E000 blank.bin
+
+3.0.14 works: https://github.com/jeelabs/esp-link/releases/tag/V3.0.14
+esptool.py --port /dev/ttyUSB0 --baud 57600 write_flash -fs 4m -ff 40m 0x00000 boot_v1.6.bin 0x1000 user1.bin 0x7C000 esp_init_data_default.bin 0x7E000 blank.bin

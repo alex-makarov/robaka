@@ -14,6 +14,8 @@ void setup()
 	while(!Serial);
 	vLog(F("[OK] Power up"));
 
+	Serial1.begin(115200);
+
 	if (robaka->init()) {
 		vLog(F("[OK] HW init complete"));
 	} else {
@@ -31,6 +33,15 @@ void setup()
 
 // MAIN LOOP
 void loop() {
+
+  if (Serial1.available()) {
+	  String s = Serial1.readString();
+	  vLog("String: " + s);
+	  Serial1.write("<"); 
+	  Serial1.write(s.c_str());
+	  Serial1.write(">");
+  }
+
 	if (robaka->isInitialized()) {
 		robaka->updateSensors();
 		node->loop();
