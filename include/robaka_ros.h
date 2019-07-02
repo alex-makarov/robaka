@@ -44,8 +44,8 @@ private:
     std_msgs::Int16 rWheelMsg;
     ros::Publisher  lWheelPublisher;
     ros::Publisher  rWheelPublisher;
-    long lWheelLast;
-    long rWheelLast;
+    long lWheelLast = 0;
+    long rWheelLast = 0; 
 
     sensor_msgs::Imu imuMsg;
     ros::Publisher imuPublisher;

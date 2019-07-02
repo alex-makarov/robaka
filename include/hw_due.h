@@ -12,10 +12,10 @@ typedef void (*ISR)();
 // Pins used on Arduino DUE
 
 // Echo sonar HC-SR04
-const unsigned int TRIGGER_1_PIN = A2; 
-const unsigned int ECHO_1_PIN    = A3;
-const unsigned int TRIGGER_2_PIN = A0; 
-const unsigned int ECHO_2_PIN    = A1;
+const unsigned int TRIGGER_1_PIN = A0; 
+const unsigned int ECHO_1_PIN    = A1;
+const unsigned int TRIGGER_2_PIN = A2; 
+const unsigned int ECHO_2_PIN    = A3;
 const unsigned int TRIGGER_3_PIN = A4; 
 const unsigned int ECHO_3_PIN    = A5;
 const int N_Sonars = 3;

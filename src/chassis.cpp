@@ -140,9 +140,11 @@ void Chassis::HWImpl::readSonar() {
 }
 
 void Chassis::HWImpl::timerCallback() {
+	//vLog("timer callback");
 	unsigned long dt = (millis() - lastSpeedTimer) / 1E3;
 	for (int i = 0; i < N_Encoders; i++) {
 		wheelSpeeds[i] = dt * (EncoderCounts[i] - lastEncoderValues[i]) / TICKS_PER_METER;
+		//vLog("Speed " + String(i) + " = " + String(wheelSpeeds[i]));
 		lastEncoderValues[i] = EncoderCounts[i];
 	}
 	lastSpeedTimer = millis();
