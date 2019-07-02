@@ -1,0 +1,46 @@
+{
+    "name": "Motor Driver Library", 
+    "version": "1.0.0", 
+    "keywords": [
+        "device", 
+        "control"
+    ], 
+    "description": "Motor Driver Library for Arduino Shields with L293D and 74HC595", 
+    "frameworks": [
+        "arduino"
+    ], 
+    "platforms": [
+        "atmelavr"
+    ], 
+    "authors": [
+        {
+            "email": "explore@curiositygym.com", 
+            "url": null, 
+            "maintainer": false, 
+            "name": "CuriosityGym"
+        }, 
+        {
+            "email": "rupin@curiositygym.com", 
+            "url": null, 
+            "maintainer": true, 
+            "name": "Rupin"
+        }
+    ], 
+    "repository": {
+        "type": "git", 
+        "url": "https://github.com/CuriosityGym/motordriver"
+    }, 
+    "homepage": null, 
+    "export": {
+        "include": null, 
+        "exclude": [
+            "extras", 
+            "docs", 
+            "tests", 
+            "test", 
+            "*.doxyfile", 
+            "*.pdf"
+        ]
+    }, 
+    "id": 3543
+}
