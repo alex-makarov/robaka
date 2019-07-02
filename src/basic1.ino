@@ -12,10 +12,6 @@ void setup()
 {
 	Serial.begin(57600);
 	while(!Serial);
-#ifdef ARDUINO_SAM_DUE
-	SerialUSB.begin(57600);
-	while (!SerialUSB);
-#endif
 	vLog(F("[OK] Power up"));
 
 	if (robaka->init()) {
@@ -24,6 +20,11 @@ void setup()
 		vLog(F("[ERROR] HW init failed"));
 	}
 
+	vLog(F("[OK] Started, waiting for serial USB..."));
+#ifdef ARDUINO_SAM_DUE
+	SerialUSB.begin(57600);
+	while (!SerialUSB);
+#endif
 	node = new RosNode(*robaka);
 	vLog(F("[OK] ROS init complete"));
 }
