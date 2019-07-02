@@ -47,6 +47,7 @@ public:
 
 	volatile long lastEncoderValues[N_Encoders]; // updated from the interrupt
     volatile float wheelSpeeds[N_Encoders];
+	volatile unsigned long lastSpeedTimer;
 };
 
 bool Chassis::HWImpl::initIMU() {
@@ -79,6 +80,7 @@ bool Chassis::HWImpl::initEncoders() {
 	for (int i = 0; i < N_Encoders; i++) {
 		pinMode(Encoders[i], INPUT);
 	}
+	lastSpeedTimer = millis();
 	attachInterrupts();
 	vLog(F("[OK] Encoders init"));
 	return true;
@@ -138,10 +140,12 @@ void Chassis::HWImpl::readSonar() {
 }
 
 void Chassis::HWImpl::timerCallback() {
+	unsigned long dt = (millis() - lastSpeedTimer) / 1E3;
 	for (int i = 0; i < N_Encoders; i++) {
-		wheelSpeeds[i] = (EncoderCounts[i] - lastEncoderValues[i]) / TICKS_PER_METER;
+		wheelSpeeds[i] = dt * (EncoderCounts[i] - lastEncoderValues[i]) / TICKS_PER_METER;
 		lastEncoderValues[i] = EncoderCounts[i];
 	}
+	lastSpeedTimer = millis();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

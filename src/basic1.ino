@@ -10,7 +10,7 @@ RosNode* node; //(*robaka);
 // Setup code runs once after program starts.
 void setup()
 {
-	Serial.begin(SERIAL_SPEED);
+	Serial.begin(115200);
 	while(!Serial);
 #ifdef ARDUINO_SAM_DUE
 	SerialUSB.begin(SERIAL_SPEED);

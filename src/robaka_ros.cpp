@@ -23,6 +23,7 @@ void rWheelTargetCallback(const std_msgs::Float32& cmdMsg) {
 
 RosNode :: RosNode(Chassis& _chassis)
 	:  	ticksPerMeter(TICKS_PER_METER),
+		odometryPublisher("odom", &odometryMsg),
 	   	leftRangePublisher("sonar", &rangeMsg),
 		middleRangePublisher("sonar", &rangeMsg),
 		rightRangePublisher("sonar", &rangeMsg),	   	   
@@ -38,6 +39,7 @@ RosNode :: RosNode(Chassis& _chassis)
 	nh.initNode();
 	broadcaster.init(nh);
 
+	nh.advertise(odometryPublisher);
 	nh.advertise(leftRangePublisher);
 	nh.advertise(middleRangePublisher);
 	nh.advertise(rightRangePublisher);
@@ -74,18 +76,69 @@ RosNode :: RosNode(Chassis& _chassis)
 }
 
 void RosNode::loop() {
+
     unsigned long now = micros();
 
-    rangeMsg.range = chassis.range();///100.0;
+	// ODOMETRY /////
+
+	float dt = (now - lastUpdate) / 1E6;
+	float vx = chassis.speedMs();
+	float vy = 0;
+	float th = chassis.yaw();
+	float deltaX = (vx*cos(th) - vy*sin(th)) * dt;
+	float deltaY = (vx*sin(th) + vy*cos(th)) * dt;
+	float deltaTh = chassis.gyro().z;
+
+	x += deltaX;
+	y += deltaY;
+
+	vLog("dt " + String(dt) + "\n" +
+		"vx " + String(vx) + " " +
+		"th " + String(th) + " " +
+		"dx " + String(deltaX) + " " + 
+		"dy " + String(deltaY) + " " +
+		"dTh " + String(deltaTh) + " " +
+		"x " + String(x) + " " +
+		"y " + String(y) + " "
+	);
+
+
+	geometry_msgs::Quaternion odom_quat = tf::createQuaternionFromYaw(th);
+	t.header.frame_id = "odom";
+	t.child_frame_id = "base_link";
+	t.transform.translation.x = x;
+	t.transform.translation.y = y;
+	t.transform.translation.z = 0;
+	t.transform.rotation = odom_quat;	
+	t.header.stamp = nh.now();
+	broadcaster.sendTransform(t);
+
+	odometryMsg.header.stamp = nh.now();
+	odometryMsg.header.frame_id = "odom";
+	odometryMsg.pose.pose.position.x = x;
+	odometryMsg.pose.pose.position.x = y;
+	odometryMsg.pose.pose.position.x = z;
+	odometryMsg.pose.pose.orientation = odom_quat;
+
+	odometryMsg.child_frame_id = "base_link";
+	odometryMsg.twist.twist.linear.x = vx;
+	odometryMsg.twist.twist.linear.y = vy;
+	odometryMsg.twist.twist.angular.z = deltaTh;
+
+	odometryPublisher.publish(&odometryMsg);
+
+	/////////////////////////
+
+    rangeMsg.range = chassis.range()/100.0;
 	rangeMsg.header.frame_id = leftSonarFrameId;
     rangeMsg.header.stamp = nh.now();
     leftRangePublisher.publish(&rangeMsg);
 
-    rangeMsg.range = chassis.range(1); ///100.0;
+    rangeMsg.range = chassis.range(1)/100.0;
 	rangeMsg.header.frame_id = middleSonarFrameId;
     middleRangePublisher.publish(&rangeMsg);
 
-    rangeMsg.range = chassis.range(2); ///100.0;
+    rangeMsg.range = chassis.range(2)/100.0;
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
 
@@ -158,7 +211,7 @@ void RosNode::loop() {
     lWheelPublisher.publish(&lWheelMsg);
     rWheelPublisher.publish(&rWheelMsg);
 
-    float dt = (now - lastUpdate) / 1E6;
+//     float dt = (now - lastUpdate) / 1E6;
     float lWheelRate = (lWheel - lWheelLast) / dt;
     float rWheelRate = (rWheel - rWheelLast) / dt;
 
@@ -200,6 +253,10 @@ void RosNode::loop() {
     lWheelLast = lWheel;
     rWheelLast = rWheel;
 	lastUpdate = now;
+
+ 	blinkState = !blinkState;
+    digitalWrite(13, blinkState);
+
     nh.spinOnce();
 }
 

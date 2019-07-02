@@ -4,6 +4,7 @@
 #include <std_msgs/Int16.h>
 #include <sensor_msgs/Range.h>
 #include <sensor_msgs/Imu.h>
+#include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <SimplePID.h>
 
@@ -25,10 +26,11 @@ public:
     void lSubscriberCallback(const std_msgs::Float32& cmdMsg);
 
 private:
-    // Change to 1,1,150,150 for Uno
-//    ros::NodeHandle_<ArduinoHardware, 6, 6, 150, 150> nh;
     ros::NodeHandle nh;
     const int ticksPerMeter;
+
+    nav_msgs::Odometry odometryMsg;
+    ros::Publisher odometryPublisher;
 
     sensor_msgs::Range rangeMsg;
     ros::Publisher leftRangePublisher;
@@ -69,6 +71,9 @@ private:
 
     unsigned long lastUpdate;
     unsigned long lastMotorCmdTime;
+
+    float x = 0, y = 0, z = 0;
+    bool blinkState;
     
     const float Ku = .15;
     const float Tu = .1142857143;
