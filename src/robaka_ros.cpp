@@ -21,6 +21,12 @@ void rWheelTargetCallback(const std_msgs::Float32& cmdMsg) {
 	}
 }
 
+void _cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
+	if (_rosnode) {
+		_rosnode->cmdvelCallback(cmdMsg);
+	}
+}
+
 RosNode :: RosNode(Chassis& _chassis)
 	:  	ticksPerMeter(TICKS_PER_METER),
 		odometryPublisher("odom", &odometryMsg),
@@ -34,6 +40,7 @@ RosNode :: RosNode(Chassis& _chassis)
 	   rWheelVelocityPublisher("rwheel_velocity", &rWheelVelocityMsg),
 	   lWheelTargetSub("lwheel_vtarget", &lWheelTargetCallback),
 	   rWheelTargetSub("rwheel_vtarget", &rWheelTargetCallback),
+	   cmdvelSub("cmd_vel", &_cmdvelCallback),
 	   chassis(_chassis) {
 
 	nh.initNode();
@@ -51,6 +58,7 @@ RosNode :: RosNode(Chassis& _chassis)
 
 	nh.subscribe(lWheelTargetSub);
 	nh.subscribe(rWheelTargetSub);
+	nh.subscribe(cmdvelSub);
 
 	rangeMsg.radiation_type = sensor_msgs::Range::ULTRASOUND;
 	rangeMsg.header.frame_id = leftSonarFrameId;
@@ -67,10 +75,6 @@ RosNode :: RosNode(Chassis& _chassis)
 
 	delay(1000);
 
-//	while(!nh.connected()) {
-//		nh.spinOnce();
-//	}
-
 	lastUpdate = micros();
 	lastMotorCmdTime = millis();
 }
@@ -80,9 +84,6 @@ void RosNode::loop() {
     unsigned long now = micros();
 
 	// See http://www.ros.org/reps/rep-0103.html for coordinate references
-
-
-	/////////////////////////
 
     rangeMsg.range = chassis.range(0)/100.0;
 	rangeMsg.header.frame_id = leftSonarFrameId;
@@ -146,9 +147,6 @@ void RosNode::loop() {
 
 	imuMsg.header.stamp = nh.now();
 	imuMsg.header.frame_id = baseFrameId;
-	// imuMsg.orientation.x = chassis.orientation().x;
-	// imuMsg.orientation.y = chassis.orientation().y;
-	// imuMsg.orientation.z = chassis.orientation().z;
 	imuMsg.orientation = tf::createQuaternionFromYaw(chassis.yaw());
 	imuMsg.angular_velocity.x = chassis.gyro().x;
 	imuMsg.angular_velocity.y = chassis.gyro().y;
@@ -177,8 +175,6 @@ void RosNode::loop() {
 
 
 	// ODOMETRY /////
-
-//	float dt = (now - lastUpdate) / 1E6;
 	float vx = (lWheelRate + rWheelRate) / (2*TICKS_PER_METER);         //chassis.speedMs();
 	float vy = 0;
 	float th = chassis.yaw();
@@ -189,16 +185,15 @@ void RosNode::loop() {
 	x += deltaX;
 	y += deltaY;
 
-	vLog("dt " + String(dt) + "\n" +
-		"vx " + String(vx) + " " +
-		"th " + String(th) + " " +
-		"dx " + String(deltaX) + " " + 
-		"dy " + String(deltaY) + " " +
-		"dTh " + String(deltaTh) + " " +
-		"x " + String(x) + " " +
-		"y " + String(y) + " "
-	);
-
+	// vLog("dt " + String(dt) + "\n" +
+	// 	"vx " + String(vx) + " " +
+	// 	"th " + String(th) + " " +
+	// 	"dx " + String(deltaX) + " " + 
+	// 	"dy " + String(deltaY) + " " +
+	// 	"dTh " + String(deltaTh) + " " +
+	// 	"x " + String(x) + " " +
+	// 	"y " + String(y) + " "
+	// );
 
 	geometry_msgs::Quaternion odom_quat = tf::createQuaternionFromYaw(th);
 	t.header.frame_id = "odom";
@@ -239,8 +234,6 @@ void RosNode::loop() {
 		rightMotorCmd = max(rightMotorCmd, MIN_MOTOR_CMD);
 	}
 
-//	vLog("L,R: " + String(lWheelTargetRate) + " " + String(rWheelTargetRate));
-
 	// Coast to a stop if target is zero.
 	if (lWheelTargetRate == 0) {
 		leftMotorCmd = 0;
@@ -274,4 +267,33 @@ void RosNode::rSubscriberCallback(const std_msgs::Float32& cmdMsg) {
 	lastMotorCmdTime = millis();
 	rWheelTargetRate = cmdMsg.data * ticksPerMeter;
 	rightController.setSetPoint(rWheelTargetRate);
+}
+
+void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
+
+	const float linearSpeed = cmdMsg.linear.x;
+	const float angularSpeed = cmdMsg.angular.z;
+
+	const int ticksPerMeter = TICKS_PER_METER;
+	const float wheelSeparation = 0.13; // meters between wheels
+	const float maxMotorSpeed = 198; // ticks per second (=1m)
+
+	const float tickRate = linearSpeed*ticksPerMeter;
+    const int diffTicks = angularSpeed*wheelSeparation*ticksPerMeter;
+
+	int lSpeed = tickRate - diffTicks;
+	int rSpeed = tickRate + diffTicks;
+
+	if (max(lSpeed, rSpeed) > maxMotorSpeed) {
+		float factor = maxMotorSpeed / max(lSpeed, rSpeed);
+		lSpeed *= factor;
+		rSpeed *= factor;
+	}
+
+	vLog("lSpeed: " + String(lSpeed) + ", rSpeed: " + String(rSpeed));
+	rWheelTargetRate = rSpeed;
+	lWheelTargetRate = lSpeed;
+	rightController.setSetPoint(rWheelTargetRate);
+	leftController.setSetPoint(lWheelTargetRate);
+	lastMotorCmdTime = millis();
 }

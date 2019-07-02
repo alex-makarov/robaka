@@ -24,6 +24,7 @@ public:
     
     void rSubscriberCallback(const std_msgs::Float32& cmdMsg);
     void lSubscriberCallback(const std_msgs::Float32& cmdMsg);
+    void cmdvelCallback(const geometry_msgs::Twist& cmdMsg);
 
 private:
     ros::NodeHandle nh;
@@ -56,7 +57,7 @@ private:
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;
-    ros::Publisher lWheelVelocityPublisher;
+    ros::Publisher lWheelVelocityPublisher; 
     ros::Publisher rWheelVelocityPublisher;
 
     int lWheelTargetRate = 0;
@@ -68,6 +69,7 @@ private:
     // source: https://github.com/merose/ROSRobotControl/blob/master/ROSRobotControl.ino
     ros::Subscriber<std_msgs::Float32> lWheelTargetSub;
     ros::Subscriber<std_msgs::Float32> rWheelTargetSub;
+    ros::Subscriber<geometry_msgs::Twist> cmdvelSub;
 
     unsigned long lastUpdate;
     unsigned long lastMotorCmdTime;
