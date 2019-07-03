@@ -3,8 +3,8 @@
 
 #ifdef ARDUINO_SAM_DUE
 //#define vLog SerialUSB.println
-//#define vLog Serial.println
-#define vLog Serial1.println
+#define vLog Serial.println
+//#define vLog Serial1.println
 #else
 #define vLog Serial.println
 #endif
