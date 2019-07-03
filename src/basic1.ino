@@ -4,7 +4,7 @@
 #include "utils.h"
 
 Chassis* robaka = Chassis::instance();
-RosNode* node; //(*robaka);
+RosNode* node;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup code runs once after program starts.
@@ -12,9 +12,11 @@ void setup()
 {
 	Serial.begin(57600);
 	while(!Serial);
-	vLog(F("[OK] Power up"));
+//	vLog(F("[OK] Power up"));
 
 	Serial1.begin(115200);
+	while(!Serial1);
+	vLog(F("[OK] Serial1 ready"));
 
 	if (robaka->init()) {
 		vLog(F("[OK] HW init complete"));
@@ -33,15 +35,6 @@ void setup()
 
 // MAIN LOOP
 void loop() {
-
-  if (Serial1.available()) {
-	  String s = Serial1.readString();
-	  vLog("String: " + s);
-	  Serial1.write("<"); 
-	  Serial1.write(s.c_str());
-	  Serial1.write(">");
-  }
-
 	if (robaka->isInitialized()) {
 		robaka->updateSensors();
 		node->loop();

@@ -47,7 +47,12 @@
 #elif defined(_SAM3XA_)
   #include <UARTClass.h>  // Arduino Due
 //  #define SERIAL_CLASS UARTClass
+
+  // TO USE SerialUSB:
   #define SERIAL_CLASS Serial_
+  // TO USE WiFI:
+//  #define SERIAL_CLASS UARTClass
+
 #elif defined(USE_USBCON)
   // Arduino Leonardo USB Serial Port
   #define SERIAL_CLASS Serial_
@@ -68,7 +73,13 @@ class ArduinoHardware {
       /* Leonardo support */
 //      iostream = &Serial1;
       //iostream = &Serial;
+
+
+      // To use SERIAL USB:
       iostream = &SerialUSB;
+
+      // To use WiFI:
+      //iostream = &Serial1;
 #else
       iostream = &Serial;
 #endif
