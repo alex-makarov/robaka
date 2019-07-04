@@ -17,7 +17,7 @@
 #undef MOTOR_DEBUG
 //#define MOTOR_DEBUG
 
-const int MAX_SONAR_DISTANCE  = 100; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+const int MAX_SONAR_DISTANCE  = 300; // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 const int SERIAL_SPEED        = 57600;
 
 // Motor shield IDs
