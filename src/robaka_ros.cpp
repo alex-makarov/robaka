@@ -44,6 +44,7 @@ RosNode :: RosNode(Chassis& _chassis)
 	   chassis(_chassis) {
 
 	nh.initNode();
+	broadcaster.init(nh);
 
 	nh.advertise(odometryPublisher);
 	nh.advertise(leftRangePublisher);
