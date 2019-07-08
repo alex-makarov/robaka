@@ -53,7 +53,7 @@ private:
     geometry_msgs::TransformStamped t;
     tf::TransformBroadcaster broadcaster;
     const char* baseFrameId = "/base_link";
-    const char* childFrameId = "/imu";
+    const char* imuFrameId = "/imu";
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;

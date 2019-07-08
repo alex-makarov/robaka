@@ -44,7 +44,6 @@ RosNode :: RosNode(Chassis& _chassis)
 	   chassis(_chassis) {
 
 	nh.initNode();
-	broadcaster.init(nh);
 
 	nh.advertise(odometryPublisher);
 	nh.advertise(leftRangePublisher);
@@ -98,53 +97,6 @@ void RosNode::loop() {
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
 
-	// middle
-	t.header.frame_id = baseFrameId;
-	t.child_frame_id = middleSonarFrameId;
-	t.transform.translation.x = 0.12;
-	t.transform.translation.y = 0;
-	t.transform.translation.z = 0;
-	
-	t.transform.rotation.x = 0; // chassis.orientation().x;
-	t.transform.rotation.y = 0; // chassis.orientation().y;
-	t.transform.rotation.z = 0; // chassis.orientation().z;
-	t.transform.rotation.w = 1; // 0;
-	t.header.stamp = nh.now();
-	broadcaster.sendTransform(t);
-
-	// left
-	t.header.frame_id = baseFrameId;
-	t.child_frame_id = leftSonarFrameId;
-	t.transform.translation.x = 0.12;
-	t.transform.translation.y = 0.06;
-	t.transform.translation.z = 0;
-	t.transform.rotation = tf::createQuaternionFromYaw(0.785);
-	t.header.stamp = nh.now();
-	broadcaster.sendTransform(t);
-
-	// right
-	t.header.frame_id = baseFrameId;
-	t.child_frame_id = rightSonarFrameId;
-	t.transform.translation.x = 0.12;
-	t.transform.translation.y = -0.06;
-	t.transform.translation.z = 0;
-	t.transform.rotation = tf::createQuaternionFromYaw(-0.785);
-	t.header.stamp = nh.now();
-	broadcaster.sendTransform(t);
-
-	// IMU TF
-	t.header.frame_id = baseFrameId;
-	t.child_frame_id = childFrameId;
-	t.transform.translation.x = -0.12;
-	t.transform.translation.y = 0;
-	t.transform.translation.z = 0.14;
-	t.transform.rotation.x = 0; // chassis.orientation().x;
-	t.transform.rotation.y = 0; // chassis.orientation().y;
-	t.transform.rotation.z = 0; // chassis.orientation().z;
-	t.transform.rotation.w = 1; // 0;
-	t.header.stamp = nh.now();
-	broadcaster.sendTransform(t);
-
 	imuMsg.header.stamp = nh.now();
 	imuMsg.header.frame_id = baseFrameId;
 	imuMsg.orientation = tf::createQuaternionFromYaw(chassis.yaw());
@@ -172,7 +124,6 @@ void RosNode::loop() {
     rWheelVelocityMsg.data = rWheelRate / TICKS_PER_METER;
     lWheelVelocityPublisher.publish(&lWheelVelocityMsg);
     rWheelVelocityPublisher.publish(&rWheelVelocityMsg);
-
 
 	// ODOMETRY /////
 	float vx = (lWheelRate + rWheelRate) / (2*TICKS_PER_METER);         //chassis.speedMs();
