@@ -29,7 +29,7 @@ const int MOTOR_FWD_RIGHT   = 3;
 const int TICKS_PER_METER = 196;
 
 // Minimum motor control value. Motor output below this will stall.
-const int MIN_MOTOR_CMD = 100;
+const int MIN_MOTOR_CMD = 150;
 // Maximum motor control value.
 const int MAX_MOTOR_CMD = 255;
 

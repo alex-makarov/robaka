@@ -100,13 +100,20 @@ void Chassis::HWImpl::detachInterrupts() {
 }
 
 void Chassis::HWImpl::readIMU() {
-	accel.getEvent(&accelEvent);
-	mag.getEvent(&magEvent);
-	gyro.getEvent(&gyroEvent);
+	sensors_event_t _accelEvent, _magEvent, _gyroEvent;
+	sensors_vec_t _orientation;
 
-	bool success = imu.fusionGetOrientation(&accelEvent, &magEvent, &orientation);
-#ifdef IMU_DEBUG
+	accel.getEvent(&_accelEvent);
+	mag.getEvent(&_magEvent);
+	gyro.getEvent(&_gyroEvent);
+
+	bool success = imu.fusionGetOrientation(&_accelEvent, &_magEvent, &_orientation);
 	if (success) {
+		accelEvent = _accelEvent;
+		magEvent = _magEvent;
+		gyroEvent =  _gyroEvent;
+		orientation = _orientation;
+#ifdef IMU_DEBUG
 		vLog("[IMU] R,P,H,X,Y,Z = " +
 			 String(orientation.roll) + ", " +
 			 String(orientation.pitch) + ", " +
@@ -114,13 +121,13 @@ void Chassis::HWImpl::readIMU() {
 			 String(orientation.x) + ", " +
 			 String(orientation.y) + ", " +
 			 String(orientation.z));
+#endif
 	}
+#ifdef IMU_DEBUG
 	vLog("[Gyro] x,y,z = " + 
 		 String(gyroEvent.gyro.x) + ", " +
 		 String(gyroEvent.gyro.y) + ", " +
 		 String(gyroEvent.gyro.z));
-#else
-	(void)success;
 #endif
 }
 
@@ -241,7 +248,7 @@ int Chassis::heading() const {
 }
 
 float Chassis::yaw() const {
-	return impl->orientation.heading * PI / 180.0;
+	return -impl->orientation.heading * PI / 180.0;
 }
 
 float Chassis::roll() const {

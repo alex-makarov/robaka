@@ -6,7 +6,8 @@
 //      iostream = &Serial1;
       iostream = &Serial;
 5. Patch ydlidar node: https://github.com/EAIBOT/ydlidar/pull/19/files
- 
+6. Cartographer configuration:  https://msadowski.github.io/ydlidar-x2-review-ros-cartographer/
+
 
 to debug rosserial:
 `sudo interceptty -s 'ispeed 57600 ospeed 57600' -l /dev/ttyACM0 /dev/ttyDUMMY | interceptty-nicedump`

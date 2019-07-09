@@ -35,7 +35,7 @@ RosNode :: RosNode(Chassis& _chassis)
 		rightRangePublisher("sonar", &rangeMsg),	   	   
 	   lWheelPublisher("lwheel", &lWheelMsg),
 	   rWheelPublisher("rwheel", &rWheelMsg),
-	   imuPublisher("imu_data", &imuMsg),
+	   imuPublisher("imu", &imuMsg),
 	   lWheelVelocityPublisher("lwheel_velocity", &lWheelVelocityMsg),
 	   rWheelVelocityPublisher("rwheel_velocity", &rWheelVelocityMsg),
 	   lWheelTargetSub("lwheel_vtarget", &lWheelTargetCallback),
@@ -117,7 +117,7 @@ void RosNode::loop() {
     lWheelPublisher.publish(&lWheelMsg);
     rWheelPublisher.publish(&rWheelMsg);
 
-     float dt = (now - lastUpdate) / 1E6;
+    float dt = (now - lastUpdate) / 1E6;
     float lWheelRate = (lWheel - lWheelLast) / dt;
     float rWheelRate = (rWheel - rWheelLast) / dt;
 
@@ -132,7 +132,8 @@ void RosNode::loop() {
 	float th = chassis.yaw();
 	float deltaX = (vx*cos(th) - vy*sin(th)) * dt;
 	float deltaY = (vx*sin(th) + vy*cos(th)) * dt;
-	float deltaTh = chassis.gyro().z;
+	float deltaTh = ((rWheelRate - lWheelRate)/TICKS_PER_METER) / 0.13;
+	//chassis.gyro().z;
 
 	x += deltaX;
 	y += deltaY;
@@ -192,6 +193,14 @@ void RosNode::loop() {
 	}
 	if (rWheelTargetRate == 0) {
 		rightMotorCmd = 0;
+	}
+
+	// hack, FIXME
+	if (leftMotorCmd >= 198) {
+		leftMotorCmd = 255;
+	}
+	if (rightMotorCmd >= 198) {
+		rightMotorCmd = 255;
 	}
 
 	chassis.moveMotor(FrontLeft, leftMotorCmd);

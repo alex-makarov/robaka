@@ -37,9 +37,9 @@ private:
     ros::Publisher leftRangePublisher;
     ros::Publisher middleRangePublisher;
     ros::Publisher rightRangePublisher;
-    const char* leftSonarFrameId = "/sonarleft";
-    const char* middleSonarFrameId = "/sonarmiddle";
-    const char* rightSonarFrameId = "/sonarright";
+    const char* leftSonarFrameId = "sonarleft";
+    const char* middleSonarFrameId = "sonarmiddle";
+    const char* rightSonarFrameId = "sonarright";
 
     std_msgs::Int16 lWheelMsg;
     std_msgs::Int16 rWheelMsg;
@@ -52,8 +52,8 @@ private:
     ros::Publisher imuPublisher;
     geometry_msgs::TransformStamped t;
     tf::TransformBroadcaster broadcaster;
-    const char* baseFrameId = "/base_link";
-    const char* imuFrameId = "/imu";
+    const char* baseFrameId = "base_link";
+    const char* imuFrameId = "imu";
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;
@@ -80,9 +80,9 @@ private:
     const float Ku = .15;
     const float Tu = .1142857143;
 
-    const float Kp = 1; //0.6*Ku;
-    const float Ki = 0; // 2*Kp/Tu;
-    const float Kd = 0; //Kp*Tu/8;
+    const float Kp = 0.6*Ku;   // 1
+    const float Ki = 2*Kp/Tu; // 0 
+    const float Kd = Kp*Tu/8;  // 0
 
     SimplePID leftController = SimplePID(Kp, Ki, Kd);
     SimplePID rightController = SimplePID(Kp, Ki, Kd);
