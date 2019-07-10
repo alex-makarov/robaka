@@ -38,5 +38,7 @@ void loop() {
 	if (robaka->isInitialized()) {
 		robaka->updateSensors();
 		node->loop();
+
+		delay(20); // try it
 	}
 }

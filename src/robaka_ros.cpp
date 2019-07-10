@@ -75,6 +75,7 @@ RosNode :: RosNode(Chassis& _chassis)
 
 	delay(1000);
 
+	lastLoopTs = nh.now();
 	lastUpdate = micros();
 	lastMotorCmdTime = millis();
 }
@@ -82,12 +83,19 @@ RosNode :: RosNode(Chassis& _chassis)
 void RosNode::loop() {
 
     unsigned long now = micros();
+	ros::Time rosTime = nh.now();
+
+	if (rosTime.toSec() <= lastLoopTs.toSec()) {
+		nh.logerror(String("New timestamp is in the past, skipping loop: " 
+					+ String(rosTime.toSec()) + " <= " + String(lastLoopTs.toSec())).c_str());
+		return;
+	}
 
 	// See http://www.ros.org/reps/rep-0103.html for coordinate references
 
     rangeMsg.range = chassis.range(0)/100.0;
 	rangeMsg.header.frame_id = leftSonarFrameId;
-    rangeMsg.header.stamp = nh.now();
+    rangeMsg.header.stamp = rosTime;
     leftRangePublisher.publish(&rangeMsg);
 
     rangeMsg.range = chassis.range(1)/100.0;
@@ -98,7 +106,7 @@ void RosNode::loop() {
 	rangeMsg.header.frame_id = rightSonarFrameId;
     rightRangePublisher.publish(&rangeMsg);
 
-	imuMsg.header.stamp = nh.now();
+	imuMsg.header.stamp = rosTime;
 	imuMsg.header.frame_id = baseFrameId;
 	imuMsg.orientation = tf::createQuaternionFromYaw(chassis.yaw());
 	imuMsg.angular_velocity.x = chassis.gyro().x;
@@ -109,8 +117,14 @@ void RosNode::loop() {
 	imuMsg.linear_acceleration.z = chassis.linearAcceleration().z;
 	imuPublisher.publish(&imuMsg);
 
+	// nh.logdebug(">>>>>");
+	// nh.loginfo(String("Left encoder counts: " + String(chassis.encoderCount(FrontLeft)) + " " + String(chassis.encoderCount(RearLeft))).c_str());
+	// nh.loginfo(String("Right encoder counts: " + String(chassis.encoderCount(FrontRight)) + " " + String(chassis.encoderCount(RearRight))).c_str());
+
 	long lWheel = 0.5*(chassis.encoderCount(FrontLeft) + chassis.encoderCount(RearLeft));
     long rWheel = 0.5*(chassis.encoderCount(FrontRight) + chassis.encoderCount(RearRight));
+
+	// nh.loginfo(String("lWheel " + String(lWheel) + " , rWheel " + String(rWheel)).c_str());
 
     lWheelMsg.data = lWheel;
     rWheelMsg.data = rWheel;
@@ -118,47 +132,53 @@ void RosNode::loop() {
     rWheelPublisher.publish(&rWheelMsg);
 
     float dt = (now - lastUpdate) / 1E6;
-    float lWheelRate = (lWheel - lWheelLast) / dt;
-    float rWheelRate = (rWheel - rWheelLast) / dt;
+    float lWheelRate = (lWheel - lWheelLast); // / dt;
+    float rWheelRate = (rWheel - rWheelLast); // / dt;
 
-    lWheelVelocityMsg.data = lWheelRate / TICKS_PER_METER;
-    rWheelVelocityMsg.data = rWheelRate / TICKS_PER_METER;
+    lWheelVelocityMsg.data = (lWheelRate / dt) / TICKS_PER_METER;
+    rWheelVelocityMsg.data = (rWheelRate / dt) / TICKS_PER_METER;
     lWheelVelocityPublisher.publish(&lWheelVelocityMsg);
     rWheelVelocityPublisher.publish(&rWheelVelocityMsg);
 
 	// ODOMETRY /////
-	float vx = (lWheelRate + rWheelRate) / (2*TICKS_PER_METER);         //chassis.speedMs();
+	float vx = (lWheelRate + rWheelRate) / (2.0*TICKS_PER_METER);         //chassis.speedMs();
 	float vy = 0;
 	float th = chassis.yaw();
-	float deltaX = (vx*cos(th) - vy*sin(th)) * dt;
-	float deltaY = (vx*sin(th) + vy*cos(th)) * dt;
+	float deltaX = (vx*cos(th) - vy*sin(th)); // * dt;
+	float deltaY = (-vx*sin(th) + vy*cos(th)); // * dt;
 	float deltaTh = ((rWheelRate - lWheelRate)/TICKS_PER_METER) / 0.13;
 	//chassis.gyro().z;
 
 	x += deltaX;
 	y += deltaY;
 
-	// vLog("dt " + String(dt) + "\n" +
+	// nh.loginfo(String("lWheelVelocity " + String(lWheelVelocityMsg.data) + " , rWheelVelocity " + String(rWheelVelocityMsg.data)).c_str());
+
+	// nh.loginfo(String(
+	// 	"lr " + String(lWheelRate) + " "
+	// 	"rr " + String(rWheelRate) + " "
+	// 	"dt " + String(dt) + " "
 	// 	"vx " + String(vx) + " " +
 	// 	"th " + String(th) + " " +
 	// 	"dx " + String(deltaX) + " " + 
 	// 	"dy " + String(deltaY) + " " +
 	// 	"dTh " + String(deltaTh) + " " +
 	// 	"x " + String(x) + " " +
-	// 	"y " + String(y) + " "
-	// );
+	// 	"y " + String(y) + " " +
+	// 	"gyroZ " + String(chassis.gyro().z)
+	// ).c_str());
 
 	geometry_msgs::Quaternion odom_quat = tf::createQuaternionFromYaw(th);
 	t.header.frame_id = "odom";
 	t.child_frame_id = "base_link";
-	t.transform.translation.x = x;
+	t.transform.translation.x = x; 
 	t.transform.translation.y = y;
 	t.transform.translation.z = 0;
 	t.transform.rotation = odom_quat;	
-	t.header.stamp = nh.now();
+	t.header.stamp = rosTime;
 	broadcaster.sendTransform(t);
 
-	odometryMsg.header.stamp = nh.now();
+	odometryMsg.header.stamp = rosTime;
 	odometryMsg.header.frame_id = "odom";
 	odometryMsg.pose.pose.position.x = x;
 	odometryMsg.pose.pose.position.y = y;
@@ -166,9 +186,9 @@ void RosNode::loop() {
 	odometryMsg.pose.pose.orientation = odom_quat;
 
 	odometryMsg.child_frame_id = "base_link";
-	odometryMsg.twist.twist.linear.x = vx;
-	odometryMsg.twist.twist.linear.y = vy;
-	odometryMsg.twist.twist.angular.z = deltaTh;
+	odometryMsg.twist.twist.linear.x = vx / dt;
+	odometryMsg.twist.twist.linear.y = 0;
+	odometryMsg.twist.twist.angular.z = deltaTh / dt;
 
 	odometryPublisher.publish(&odometryMsg);
 
@@ -203,6 +223,8 @@ void RosNode::loop() {
 		rightMotorCmd = 255;
 	}
 
+//	nh.loginfo(String("Actual commands: " + String(leftMotorCmd) + ", Right: " + String(rightMotorCmd)).c_str());
+
 	chassis.moveMotor(FrontLeft, leftMotorCmd);
 	chassis.moveMotor(RearLeft, leftMotorCmd);
 	chassis.moveMotor(FrontRight, rightMotorCmd);
@@ -214,6 +236,8 @@ void RosNode::loop() {
 
  	blinkState = !blinkState;
     digitalWrite(13, blinkState);
+
+	lastLoopTs = rosTime;
 
     nh.spinOnce();
 }
@@ -235,6 +259,8 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 	const float linearSpeed = cmdMsg.linear.x;
 	const float angularSpeed = cmdMsg.angular.z;
 
+//	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
+
 	const int ticksPerMeter = TICKS_PER_METER;
 	const float wheelSeparation = 0.13; // meters between wheels
 	const float maxMotorSpeed = 198; // ticks per second (=1m)
@@ -251,7 +277,7 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 		rSpeed *= factor;
 	}
 
-	vLog("lSpeed: " + String(lSpeed) + ", rSpeed: " + String(rSpeed));
+//	nh.loginfo(String("Left: " + String(lSpeed) + ", Right: " + String(rSpeed)).c_str());
 	rWheelTargetRate = rSpeed;
 	lWheelTargetRate = lSpeed;
 	rightController.setSetPoint(rWheelTargetRate);

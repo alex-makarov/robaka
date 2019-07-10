@@ -121,13 +121,16 @@ void Chassis::HWImpl::readIMU() {
 			 String(orientation.x) + ", " +
 			 String(orientation.y) + ", " +
 			 String(orientation.z));
-#endif
-	}
-#ifdef IMU_DEBUG
-	vLog("[Gyro] x,y,z = " + 
+	 	vLog("[Gyro] x,y,z = " + 
 		 String(gyroEvent.gyro.x) + ", " +
 		 String(gyroEvent.gyro.y) + ", " +
 		 String(gyroEvent.gyro.z));
+#endif
+	}
+#ifdef IMU_DEBUG
+	else {
+		vLog("IMU error");
+	}
 #endif
 }
 
@@ -244,11 +247,11 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 }
 
 int Chassis::heading() const {
-    return (int)impl->orientation.heading;
+	return(int)impl->orientation.heading;
 }
 
-float Chassis::yaw() const {
-	return -impl->orientation.heading * PI / 180.0;
+float Chassis:: yaw() const {
+	return (heading() - 90) * PI / 180.0; 
 }
 
 float Chassis::roll() const {

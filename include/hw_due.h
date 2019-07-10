@@ -52,7 +52,7 @@ void EncoderISR1() {
     vLog("Encoder 1" + String(EncoderCounts[1]));
 #endif
 }
-void EncoderISR2() {
+void EncoderISR2() { 
     EncoderCounts[2] += EncoderDirections[2];
     EncoderUpdates[2] = millis();
 #ifdef ENCODER_DEBUG
@@ -60,7 +60,6 @@ void EncoderISR2() {
 #endif
 }
 void EncoderISR3() {
-    ++EncoderCounts[3];
     EncoderCounts[3] += EncoderDirections[3];
     EncoderUpdates[3] = millis();
 #ifdef ENCODER_DEBUG
