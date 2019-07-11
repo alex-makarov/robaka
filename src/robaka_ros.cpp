@@ -30,9 +30,9 @@ void _cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 RosNode :: RosNode(Chassis& _chassis)
 	:  	ticksPerMeter(TICKS_PER_METER),
 		odometryPublisher("odom", &odometryMsg),
-	   	leftRangePublisher("sonar", &rangeMsg),
-		middleRangePublisher("sonar", &rangeMsg),
-		rightRangePublisher("sonar", &rangeMsg),	   	   
+	   	leftRangePublisher("sonar_left", &rangeMsg),
+		middleRangePublisher("sonar_middle", &rangeMsg),
+		rightRangePublisher("sonar_right", &rangeMsg),	   	   
 	   lWheelPublisher("lwheel", &lWheelMsg),
 	   rWheelPublisher("rwheel", &rWheelMsg),
 	   imuPublisher("imu", &imuMsg),

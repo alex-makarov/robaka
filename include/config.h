@@ -35,6 +35,6 @@ const int MAX_MOTOR_CMD = 255;
 
 const float SONAR_FOV = 0.26;
 const float SONAR_MIN = 0.03;
-const float SONAR_MAX = 1.0;
+const float SONAR_MAX = 3.0;
 
 #endif
