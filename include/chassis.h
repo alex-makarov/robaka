@@ -33,6 +33,7 @@ private:
     ~Chassis();
 
     static void timerCallback();
+    static void imuTimerCallback();
 
     static Chassis* _instance;
 

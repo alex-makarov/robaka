@@ -73,26 +73,36 @@ RosNode :: RosNode(Chassis& _chassis)
 	}
 	_rosnode = this;
 
+	nh.spinOnce();
+	nh.requestSyncTime();
+
 	delay(1000);
 
-	lastLoopTs = nh.now();
+	lastLoopTs = ros::Time();
 	lastUpdate = micros();
 	lastMotorCmdTime = millis();
 }
 
 void RosNode::loop() {
+	if (!nh.connected()) {
+		nh.logerror("ROS not connected");
+		nh.spinOnce();
+		return;
+	}
 
     unsigned long now = micros();
 	ros::Time rosTime = nh.now();
+	double timeSinceLastLoop = rosTime.toSec() - lastLoopTs.toSec();
 
-	if (rosTime.toSec() <= lastLoopTs.toSec()) {
+	if (timeSinceLastLoop < -100) {
+		lastLoopTs = rosTime;
+	} else if (timeSinceLastLoop <= 0) {
 		nh.logerror(String("New timestamp is in the past, skipping loop: " 
 					+ String(rosTime.toSec()) + " <= " + String(lastLoopTs.toSec())).c_str());
 		return;
 	}
 
 	// See http://www.ros.org/reps/rep-0103.html for coordinate references
-
     rangeMsg.range = chassis.range(0)/100.0;
 	rangeMsg.header.frame_id = leftSonarFrameId;
     rangeMsg.header.stamp = rosTime;

@@ -5,6 +5,9 @@
 #include <Adafruit_9DOF.h>
 #include <SimplePID.h>
 #include <DueTimer.h>
+#include <list>
+#include <iterator>
+#include <algorithm>
 
 #include "chassis.h"
 #include "config.h"
@@ -15,6 +18,8 @@
 #elif ARDUINO_SAM_DUE
 #include "hw_due.h"
 #endif
+
+#define FILTER_SAMPLES 10
 
 class Chassis::HWImpl {
 public:
@@ -44,10 +49,18 @@ public:
     void detachInterrupts();
 
 	void timerCallback();
+	void imuTimerCallback();
+
+	void updateHeadingFilter(float heading);
 
 	volatile long lastEncoderValues[N_Encoders]; // updated from the interrupt
     volatile float wheelSpeeds[N_Encoders];
 	volatile unsigned long lastSpeedTimer;
+
+	bool imuReady = false;
+
+	std::list<float> headingSamples;
+	float smoothedHeading = 0.0;
 };
 
 bool Chassis::HWImpl::initIMU() {
@@ -64,6 +77,7 @@ bool Chassis::HWImpl::initIMU() {
 	}
 	vLog(F("[OK] IMU init"));
     
+	imuReady = true;
 	vLog("[OK] Found LSM303DLHC and L3GD20 IMU");
 	return true;
 }
@@ -103,16 +117,19 @@ void Chassis::HWImpl::readIMU() {
 	sensors_event_t _accelEvent, _magEvent, _gyroEvent;
 	sensors_vec_t _orientation;
 
-	accel.getEvent(&_accelEvent);
-	mag.getEvent(&_magEvent);
-	gyro.getEvent(&_gyroEvent);
+	bool success = true;
 
-	bool success = imu.fusionGetOrientation(&_accelEvent, &_magEvent, &_orientation);
+	success &= accel.getEvent(&_accelEvent);
+	success &= mag.getEvent(&_magEvent);
+	success &= gyro.getEvent(&_gyroEvent);
+
+	success &= imu.fusionGetOrientation(&_accelEvent, &_magEvent, &_orientation);
 	if (success) {
 		accelEvent = _accelEvent;
 		magEvent = _magEvent;
 		gyroEvent =  _gyroEvent;
 		orientation = _orientation;
+
 #ifdef IMU_DEBUG
 		vLog("[IMU] R,P,H,X,Y,Z = " +
 			 String(orientation.roll) + ", " +
@@ -160,6 +177,22 @@ void Chassis::HWImpl::timerCallback() {
 	lastSpeedTimer = millis();
 }
 
+void Chassis::HWImpl::imuTimerCallback() {
+	if (!imuReady) 
+		return;
+
+	readIMU();
+	updateHeadingFilter(orientation.heading);
+}
+
+void Chassis::HWImpl::updateHeadingFilter(float heading) {
+	if (headingSamples.size() == FILTER_SAMPLES) 
+		headingSamples.pop_back();
+
+	headingSamples.push_front(heading);
+	smoothedHeading = std::accumulate(headingSamples.begin(), headingSamples.end(), 0.0) / headingSamples.size();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 Chassis* Chassis::_instance = 0;
@@ -168,6 +201,7 @@ Chassis* Chassis::instance() {
     if (_instance == 0) {
         _instance = new Chassis();
 		Timer.getAvailable().attachInterrupt(timerCallback).setFrequency(1).start(1E6);
+		Timer.getAvailable().attachInterrupt(imuTimerCallback).setFrequency(50).start();
     }
 
     return _instance;
@@ -186,6 +220,10 @@ void Chassis::timerCallback() {
 	Chassis::instance()->impl->timerCallback();
 }
 
+void Chassis::imuTimerCallback() {
+	Chassis::instance()->impl->imuTimerCallback();
+}
+
 bool Chassis::init() {
     initialized =  impl->initEncoders() &&
         impl->initSonar() &&
@@ -195,7 +233,7 @@ bool Chassis::init() {
 
 void Chassis::updateSensors() {
     impl->detachInterrupts();
-    impl->readIMU();
+    // impl->readIMU(); Done in the interrupt
     impl->readSonar();
     impl->attachInterrupts();
     lastUpdate = millis();
@@ -247,7 +285,8 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 }
 
 int Chassis::heading() const {
-	return(int)impl->orientation.heading;
+	//return(int)impl->orientation.heading;
+	return (int)impl->smoothedHeading;
 }
 
 float Chassis:: yaw() const {
