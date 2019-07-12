@@ -29,7 +29,7 @@ void _cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 
 RosNode :: RosNode(Chassis& _chassis)
 	:  	ticksPerMeter(TICKS_PER_METER),
-		odometryPublisher("odom", &odometryMsg),
+		odometryPublisher("raw_odom", &odometryMsg),
 	   	leftRangePublisher("sonar_left", &rangeMsg),
 		middleRangePublisher("sonar_middle", &rangeMsg),
 		rightRangePublisher("sonar_right", &rangeMsg),	   	   
@@ -119,7 +119,7 @@ void RosNode::loop() {
     rightRangePublisher.publish(&rangeMsg);
 
 	imuMsg.header.stamp = rosTime;
-	imuMsg.header.frame_id = baseFrameId;
+	imuMsg.header.frame_id = imuFrameId;
 	imuMsg.orientation = tf::createQuaternionFromYaw(chassis.yaw());
 	imuMsg.angular_velocity.x = chassis.gyro().x;
 	imuMsg.angular_velocity.y = chassis.gyro().y;
@@ -130,7 +130,7 @@ void RosNode::loop() {
 	imuPublisher.publish(&imuMsg);
 
 	magMsg.header.stamp = rosTime;
-	magMsg.header.frame_id = baseFrameId;
+	magMsg.header.frame_id = imuFrameId;
 	magMsg.magnetic_field.x = chassis.magneticField().x;
 	magMsg.magnetic_field.y = chassis.magneticField().y;
 	magMsg.magnetic_field.z = chassis.magneticField().z;
