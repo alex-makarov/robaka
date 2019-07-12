@@ -35,7 +35,8 @@ RosNode :: RosNode(Chassis& _chassis)
 		rightRangePublisher("sonar_right", &rangeMsg),	   	   
 	   lWheelPublisher("lwheel", &lWheelMsg),
 	   rWheelPublisher("rwheel", &rWheelMsg),
-	   imuPublisher("imu", &imuMsg),
+	   imuPublisher("imu/data_raw", &imuMsg),
+	   magPublisher("imu/mag", &magMsg),
 	   lWheelVelocityPublisher("lwheel_velocity", &lWheelVelocityMsg),
 	   rWheelVelocityPublisher("rwheel_velocity", &rWheelVelocityMsg),
 	   lWheelTargetSub("lwheel_vtarget", &lWheelTargetCallback),
@@ -55,6 +56,7 @@ RosNode :: RosNode(Chassis& _chassis)
 	nh.advertise(lWheelVelocityPublisher);
 	nh.advertise(rWheelVelocityPublisher);
 	nh.advertise(imuPublisher);
+	nh.advertise(magPublisher);
 
 	nh.subscribe(lWheelTargetSub);
 	nh.subscribe(rWheelTargetSub);
@@ -126,6 +128,13 @@ void RosNode::loop() {
 	imuMsg.linear_acceleration.y = chassis.linearAcceleration().y;
 	imuMsg.linear_acceleration.z = chassis.linearAcceleration().z;
 	imuPublisher.publish(&imuMsg);
+
+	magMsg.header.stamp = rosTime;
+	magMsg.header.frame_id = baseFrameId;
+	magMsg.magnetic_field.x = chassis.magneticField().x;
+	magMsg.magnetic_field.y = chassis.magneticField().y;
+	magMsg.magnetic_field.z = chassis.magneticField().z;
+	magPublisher.publish(&magMsg);
 
 	// nh.logdebug(">>>>>");
 	// nh.loginfo(String("Left encoder counts: " + String(chassis.encoderCount(FrontLeft)) + " " + String(chassis.encoderCount(RearLeft))).c_str());

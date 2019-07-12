@@ -4,6 +4,7 @@
 #include <std_msgs/Int16.h>
 #include <sensor_msgs/Range.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/MagneticField.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <SimplePID.h>
@@ -50,6 +51,9 @@ private:
 
     sensor_msgs::Imu imuMsg;
     ros::Publisher imuPublisher;
+    sensor_msgs::MagneticField magMsg;
+    ros::Publisher magPublisher;
+
     geometry_msgs::TransformStamped t;
     tf::TransformBroadcaster broadcaster;
     const char* baseFrameId = "base_link";

@@ -313,6 +313,10 @@ vector_t Chassis::linearAcceleration() const {
 	return { impl->accelEvent.acceleration.x, impl->accelEvent.acceleration.y, impl->accelEvent.acceleration.z };
 }
 
+vector_t Chassis::magneticField() const {
+	return { impl->magEvent.magnetic.x, impl->magEvent.magnetic.y, impl->magEvent.magnetic.z };
+}
+
 float Chassis::speedMs() const {
 	float s = 0.0;
 	for (int i = 0; i < N_Encoders; i++)

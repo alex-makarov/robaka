@@ -21,6 +21,7 @@ public:
     vector_t orientation() const;
     vector_t gyro() const;
     vector_t linearAcceleration() const;
+    vector_t magneticField() const;
     float speedMs() const; // m/s, aggregated over last second
     int range(const int sonar=0) const;
     long encoderCount(Wheel wheel) const;
