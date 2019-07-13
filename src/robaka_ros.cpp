@@ -189,13 +189,13 @@ void RosNode::loop() {
 
 	geometry_msgs::Quaternion odom_quat = tf::createQuaternionFromYaw(th);
 	t.header.frame_id = "odom";
-	t.child_frame_id = "base_link";
+	t.child_frame_id = "base_footprint";
 	t.transform.translation.x = x; 
 	t.transform.translation.y = y;
 	t.transform.translation.z = 0;
 	t.transform.rotation = odom_quat;	
 	t.header.stamp = rosTime;
-	broadcaster.sendTransform(t);
+//	broadcaster.sendTransform(t);
 
 	odometryMsg.header.stamp = rosTime;
 	odometryMsg.header.frame_id = "odom";
@@ -204,7 +204,7 @@ void RosNode::loop() {
 	odometryMsg.pose.pose.position.z = z;
 	odometryMsg.pose.pose.orientation = odom_quat;
 
-	odometryMsg.child_frame_id = "base_link";
+	odometryMsg.child_frame_id = "base_footprint";
 	odometryMsg.twist.twist.linear.x = vx / dt;
 	odometryMsg.twist.twist.linear.y = 0;
 	odometryMsg.twist.twist.angular.z = deltaTh / dt;
