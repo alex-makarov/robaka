@@ -234,6 +234,8 @@ void RosNode::loop() {
 		rightMotorCmd = 0;
 	}
 
+	nh.loginfo(String("Commands before hack: " + String(leftMotorCmd) + ", Right: " + String(rightMotorCmd)).c_str());
+
 	// hack, FIXME
 	if (leftMotorCmd >= 198) {
 		leftMotorCmd = 255;
@@ -242,7 +244,7 @@ void RosNode::loop() {
 		rightMotorCmd = 255;
 	}
 
-//	nh.loginfo(String("Actual commands: " + String(leftMotorCmd) + ", Right: " + String(rightMotorCmd)).c_str());
+	nh.loginfo(String("Actual commands: " + String(leftMotorCmd) + ", Right: " + String(rightMotorCmd)).c_str());
 
 	chassis.moveMotor(FrontLeft, leftMotorCmd);
 	chassis.moveMotor(RearLeft, leftMotorCmd);
@@ -278,11 +280,11 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 	const float linearSpeed = cmdMsg.linear.x;
 	const float angularSpeed = cmdMsg.angular.z;
 
-//	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
+	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
 
 	const int ticksPerMeter = TICKS_PER_METER;
 	const float wheelSeparation = 0.13; // meters between wheels
-	const float maxMotorSpeed = 198; // ticks per second (=1m)
+	const float maxMotorSpeed = 255; // ticks per second (=1m)
 
 	const float tickRate = linearSpeed*ticksPerMeter;
     const int diffTicks = angularSpeed*wheelSeparation*ticksPerMeter;
@@ -296,7 +298,7 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 		rSpeed *= factor;
 	}
 
-//	nh.loginfo(String("Left: " + String(lSpeed) + ", Right: " + String(rSpeed)).c_str());
+	nh.loginfo(String("Target rates Left: " + String(lSpeed) + ", Right: " + String(rSpeed)).c_str());
 	rWheelTargetRate = rSpeed;
 	lWheelTargetRate = lSpeed;
 	rightController.setSetPoint(rWheelTargetRate);
