@@ -283,7 +283,7 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 	const float linearSpeed = cmdMsg.linear.x;
 	const float angularSpeed = cmdMsg.angular.z;
 
-	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
+//	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
 
 	const int ticksPerMeter = TICKS_PER_METER;
 	const float wheelSeparation = 0.13; // meters between wheels
@@ -300,13 +300,13 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 		rSpeed *= factor;
 	}
 
-	nh.loginfo(String("PR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
+//	nh.loginfo(String("PR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
 
 	// todo: convert speed to motor commands
 	lSpeed = lSpeed * MAX_MOTOR_CMD / maxMotorSpeedParam;
 	rSpeed = rSpeed * MAX_MOTOR_CMD / maxMotorSpeedParam;
 
-	nh.loginfo(String("TR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
+//	nh.loginfo(String("TR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
 	rWheelTargetRate = rSpeed;
 	lWheelTargetRate = lSpeed;
 	rightController.setSetPoint(rWheelTargetRate);
