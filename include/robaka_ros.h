@@ -85,12 +85,14 @@ private:
     const float Ku = .15;
     const float Tu = .1142857143;
 
-    const float Kp = 1; //0.6*Ku;   // 1
-    const float Ki = 0; // 2*Kp/Tu; // 0 
-    const float Kd = 0; //Kp*Tu/8;  // 0
+    const float Kp = 0.07; // 1; //0.6*Ku;   // 1
+    const float Ki = 0.0; // 0; // 2*Kp/Tu; // 0 
+    const float Kd = 0.001; //0 ; //Kp*Tu/8;  // 0
 
     SimplePID leftController = SimplePID(Kp, Ki, Kd);
     SimplePID rightController = SimplePID(Kp, Ki, Kd);
+
+    int maxMotorSpeedParam;
 
     Chassis& chassis;
 };

@@ -75,10 +75,17 @@ RosNode :: RosNode(Chassis& _chassis)
 	}
 	_rosnode = this;
 
-	nh.spinOnce();
+// Wait until connected
+	while (!nh.connected()) { nh.spinOnce(); }
 	nh.requestSyncTime();
 
 	delay(1000);
+
+	if (!nh.getParam("~max_motor_speed", &maxMotorSpeedParam)) {
+		nh.logerror("Cannot get max_motor_speed param");
+		maxMotorSpeedParam = MAX_MOTOR_SPEED;
+	}
+	nh.loginfo(String("max_motor_speed = " + String(maxMotorSpeedParam)).c_str());
 
 	lastLoopTs = ros::Time();
 	lastUpdate = micros();
@@ -136,19 +143,8 @@ void RosNode::loop() {
 	magMsg.magnetic_field.z = chassis.magneticField().z;
 	magPublisher.publish(&magMsg);
 
-	// nh.logdebug(">>>>>");
-	// nh.loginfo(String("Left encoder counts: " + String(chassis.encoderCount(FrontLeft)) + " " + String(chassis.encoderCount(RearLeft))).c_str());
-	// nh.loginfo(String("Right encoder counts: " + String(chassis.encoderCount(FrontRight)) + " " + String(chassis.encoderCount(RearRight))).c_str());
-
 	long lWheel = 0.5*(chassis.encoderCount(FrontLeft) + chassis.encoderCount(RearLeft));
     long rWheel = 0.5*(chassis.encoderCount(FrontRight) + chassis.encoderCount(RearRight));
-
-	// nh.loginfo(String("lWheel " + String(lWheel) + " , rWheel " + String(rWheel)).c_str());
-
-    lWheelMsg.data = lWheel;
-    rWheelMsg.data = rWheel;
-    lWheelPublisher.publish(&lWheelMsg);
-    rWheelPublisher.publish(&rWheelMsg);
 
     float dt = (now - lastUpdate) / 1E6;
     float lWheelRate = (lWheel - lWheelLast); // / dt;
@@ -212,22 +208,33 @@ void RosNode::loop() {
 	odometryPublisher.publish(&odometryMsg);
 
 
-	int leftControl = leftController.getControlValue(lWheelRate, dt);
-	int rightControl = rightController.getControlValue(rWheelRate, dt);
+	int leftControl = leftController.getControlValue(lWheelRate/dt, dt);
+	int rightControl = rightController.getControlValue(rWheelRate/dt, dt);
 
-//	nh.loginfo(String("CV: " + String(leftMotorCmd) + ", " + String(rightMotorCmd)).c_str());
+#ifdef DEBUG_ODOMETRY
+	nh.loginfo(String("CV: " + String(leftControl) + ", " + String(rightControl)).c_str());
+#endif
 
 	leftMotorCmd += min(MAX_MOTOR_CMD, leftControl);
 	leftMotorCmd = constrain(leftMotorCmd, -MAX_MOTOR_CMD, MAX_MOTOR_CMD);
 	if (leftMotorCmd > 0) {
 		leftMotorCmd = max(leftMotorCmd, MIN_MOTOR_CMD);
+	} else if (leftMotorCmd < 0) {
+		leftMotorCmd = min(leftMotorCmd, -MIN_MOTOR_CMD);
 	}
 
 	rightMotorCmd += min(MAX_MOTOR_CMD, rightControl);
 	rightMotorCmd = constrain(rightMotorCmd, -MAX_MOTOR_CMD, MAX_MOTOR_CMD);
 	if (rightMotorCmd > 0) {
 		rightMotorCmd = max(rightMotorCmd, MIN_MOTOR_CMD);
+	} else if (rightMotorCmd < 0) {
+		rightMotorCmd = min(rightMotorCmd, -MIN_MOTOR_CMD);
 	}
+
+#ifdef DEBUG_ODOMETRY
+	nh.loginfo(String("CE: " + String(leftController.getCumulativeError()) + ", " + String(rightController.getCumulativeError())).c_str());
+	nh.loginfo(String("CM: " + String(leftMotorCmd) + ", " + String(rightMotorCmd)).c_str());
+#endif
 
 	// Coast to a stop if target is zero.
 	if (lWheelTargetRate == 0) {
@@ -237,19 +244,10 @@ void RosNode::loop() {
 		rightMotorCmd = 0;
 	}
 
-//	nh.loginfo(String("BH: " + String(leftMotorCmd) + ", " + String(rightMotorCmd)).c_str());
-
-	// hack, FIXME
-	// transform targetRate <
-
-	// if (leftMotorCmd >= 198) {
-	// 	leftMotorCmd = 255;
-	// }
-	// if (rightMotorCmd >= 198) {
-	// 	rightMotorCmd = 255;
-	// }
-
-//	nh.loginfo(String("AC: " + String(leftMotorCmd) + ", " + String(rightMotorCmd)).c_str());
+    lWheelMsg.data = leftMotorCmd;
+    rWheelMsg.data = rightMotorCmd;
+    lWheelPublisher.publish(&lWheelMsg);
+    rWheelPublisher.publish(&rWheelMsg);
 
 	chassis.moveMotor(FrontLeft, leftMotorCmd);
 	chassis.moveMotor(RearLeft, leftMotorCmd);
@@ -285,25 +283,30 @@ void RosNode::cmdvelCallback(const geometry_msgs::Twist& cmdMsg) {
 	const float linearSpeed = cmdMsg.linear.x;
 	const float angularSpeed = cmdMsg.angular.z;
 
-//	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
+	nh.loginfo(String("cmd_vel x" + String(linearSpeed) + " , angularSpeed: " + String(angularSpeed)).c_str());
 
 	const int ticksPerMeter = TICKS_PER_METER;
 	const float wheelSeparation = 0.13; // meters between wheels
-	const float maxMotorSpeed = MAX_MOTOR_SPEED; // ticks per second (=1m)
 
-	const float tickRate = linearSpeed*ticksPerMeter;
-    const int diffTicks = angularSpeed*wheelSeparation*ticksPerMeter;
+	const int tickRate = linearSpeed*ticksPerMeter;
+    const int diffTicks = angularSpeed*wheelSeparation*ticksPerMeter * 2; // 2 = let's try
 
 	int lSpeed = tickRate - diffTicks;
 	int rSpeed = tickRate + diffTicks;
 
-	if (max(lSpeed, rSpeed) > maxMotorSpeed) {
-		float factor = maxMotorSpeed / max(lSpeed, rSpeed);
+	if (max(lSpeed, rSpeed) > maxMotorSpeedParam) {
+		float factor = maxMotorSpeedParam / float(max(lSpeed, rSpeed));
 		lSpeed *= factor;
 		rSpeed *= factor;
 	}
 
-//	nh.loginfo(String("TR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
+	nh.loginfo(String("PR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
+
+	// todo: convert speed to motor commands
+	lSpeed = lSpeed * MAX_MOTOR_CMD / maxMotorSpeedParam;
+	rSpeed = rSpeed * MAX_MOTOR_CMD / maxMotorSpeedParam;
+
+	nh.loginfo(String("TR: " + String(lSpeed) + ", " + String(rSpeed)).c_str());
 	rWheelTargetRate = rSpeed;
 	lWheelTargetRate = lSpeed;
 	rightController.setSetPoint(rWheelTargetRate);

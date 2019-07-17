@@ -13,3 +13,10 @@ WHEELS
 
 
 Connectivity: ESP 8266 with https://github.com/jeelabs/esp-link v 3.0.14 configured for my WLAN.
+
+Vx_max = 0.5 m/s
+Vx_min = 0.2 m/s
+V_rot_max = 0.8 rad/s
+V_rot_min = 0.6 rad/s
+Acc_max = 1 m/s*s
+Acc_rot = 1 rad/s*s
