@@ -4,6 +4,8 @@
 Robaka is my testbed for ROS and SLAM. Software runs on Arduino Due (this repo) and Jetson Nano.
 
 # SETUP
+This project uses https://platformio.org/ build toolchain. Import the project and it should pull the dependencies.
+
 1. Clone SimplePID to lib: git@github.com:merose/SimplePID.git
 2. Change Adafruit_L3GD20_U.h as following
 ```
