@@ -1,15 +1,13 @@
 # ROBAKA
+![Alt text](design/images/IMG_0014.JPG?raw=true "Robaka")
 
-Repo to build the Robaka module for Arduino.
-
+Robaka is my testbed for ROS and SLAM. Software runs on Arduino Due (this repo) and Jetson Nano.
 
 # SETUP
-
 1. Clone SimplePID to lib: git@github.com:merose/SimplePID.git
 2. Change Adafruit_L3GD20_U.h as following
 ```
   !! NOTE that Gyro is using non-standard address 0x69 instead of 0x6B and D3 id instead of D4 or D7
-    I2C device found at address 0x69  
     // #define L3GD20_ADDRESS           (0x6B)        // 1101011
     #define L3GD20_ADDRESS           (0x69)        // 1101001
     ...
