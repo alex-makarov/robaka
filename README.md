@@ -1,7 +1,7 @@
 # ROBAKA
 ![Alt text](design/images/IMG_0014.JPG?raw=true "Robaka")
 
-Robaka is my testbed for ROS and SLAM. Software runs on Arduino Due (this repo) and Jetson Nano.
+Robaka is my testbed for ROS and SLAM. Software runs on Arduino Due (this repo) and Jetson Nano - the repo is here: https://github.com/alex-makarov/robaka-ros
 
 # SETUP
 This project uses https://platformio.org/ build toolchain. Import the project and it should pull the dependencies.
