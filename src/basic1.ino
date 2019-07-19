@@ -12,7 +12,6 @@ void setup()
 {
 	Serial.begin(57600);
 	while(!Serial);
-//	vLog(F("[OK] Power up"));
 
 	Serial1.begin(115200);
 	while(!Serial1);
@@ -33,12 +32,11 @@ void setup()
 	vLog(F("[OK] ROS init complete"));
 }
 
-// MAIN LOOP
 void loop() {
 	if (robaka->isInitialized()) {
 		robaka->updateSensors();
 		node->loop();
 
-		delay(20); // try it
+		delay(20);
 	}
 }

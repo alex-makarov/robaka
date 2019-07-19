@@ -1,22 +1,29 @@
-WHEELS
-  "TT Motor" encoder and wheel parameters
+Robaka v1:
 
-  Motors have optical encoders, emitting light through a disk with 20 slots.
-  Wheel size: 65x27mm , 204.2mm circle length.
-  
-  20 slots, 40 state changes per full revolution.
-  40 state changes = 204.2mm traveled
-  1 state change = (204.2 / 40) = 5.1mm
+Low level
+* Arduino Due
+* 4WD differential chassis with well-known 'yellow' chinese motors, also known as 'TT motor'
+* All motors are equipped with optical encoders
+* L293D motor shield for 4 motors 
+* ESP-01 (ESP8266) for remote serial port access
+* 9DoF IMU on LSM303DLHC and L3GD20, clone of Adafruit IMU
+* 3x HC-SR04 sonars
 
-  100 state changes = 2.5 full revolutions = 51.5 cm
-  200 state changes = 5 full revolutions = 103 cm
+Top level
+* Jetson Nano with 64GB microSD and WiFi USB stick
+* Raspberry Pi camera v2 - 8MP
+* YDLIDAR X4 Lidar - 10m range, 6-12 Hz frequency
 
+DIMENSIONS
+* Chassis only: 250x150x70mm
+* July2019 configuration, with rear IMU: 370x200x170mm. Weight 1600g.
+* Wheels: 65x27mm, 204mm circumference. Encoders with 20 slots.
 
-Connectivity: ESP 8266 with https://github.com/jeelabs/esp-link v 3.0.14 configured for my WLAN.
-
-Vx_max = 0.5 m/s
-Vx_min = 0.2 m/s
-V_rot_max = 0.8 rad/s
-V_rot_min = 0.6 rad/s
-Acc_max = 1 m/s*s
-Acc_rot = 1 rad/s*s
+DYNAMIC PARAMETERS
+Fully loaded:
+* Vx_max = 0.5 m/s
+* Vx_min = 0.2 m/s
+* V_rot_max = 0.8 rad/s
+* V_rot_min = 0.6 rad/s
+* Acc_max = 1 m/s*s
+* Acc_rot = 1 rad/s*s

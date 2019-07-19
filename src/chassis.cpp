@@ -68,17 +68,16 @@ bool Chassis::HWImpl::initIMU() {
 		vLog("Oops ... unable to initialize the Gyroscope. Check your wiring!");
 		return false;
 	}
-	vLog(F("[OK] Gyro init"));
+	vLog(F("[OK] L3GD20 Gyro init"));
 
 	// Try to initialise and warn if we couldn't detect the chip
 	if (!imu.begin() || !accel.begin() || !mag.begin()) { 
 		vLog("Oops ... unable to initialize the IMU. Check your wiring!");
 		return false;
 	}
-	vLog(F("[OK] IMU init"));
+	vLog(F("[OK] LSM303DLHC IMU init"));
     
 	imuReady = true;
-	vLog("[OK] Found LSM303DLHC and L3GD20 IMU");
 	return true;
 }
 
@@ -122,8 +121,8 @@ void Chassis::HWImpl::readIMU() {
 	success &= accel.getEvent(&_accelEvent);
 	success &= mag.getEvent(&_magEvent);
 	success &= gyro.getEvent(&_gyroEvent);
-
 	success &= imu.fusionGetOrientation(&_accelEvent, &_magEvent, &_orientation);
+
 	if (success) {
 		accelEvent = _accelEvent;
 		magEvent = _magEvent;
@@ -167,11 +166,9 @@ void Chassis::HWImpl::readSonar() {
 }
 
 void Chassis::HWImpl::timerCallback() {
-	//vLog("timer callback");
 	unsigned long dt = (millis() - lastSpeedTimer) / 1E3;
 	for (int i = 0; i < N_Encoders; i++) {
 		wheelSpeeds[i] = dt * (EncoderCounts[i] - lastEncoderValues[i]) / TICKS_PER_METER;
-		//vLog("Speed " + String(i) + " = " + String(wheelSpeeds[i]));
 		lastEncoderValues[i] = EncoderCounts[i];
 	}
 	lastSpeedTimer = millis();
@@ -232,8 +229,8 @@ bool Chassis::init() {
 }
 
 void Chassis::updateSensors() {
+	// IMU and encoders are read in the interrupts
     impl->detachInterrupts();
-    // impl->readIMU(); Done in the interrupt
     impl->readSonar();
     impl->attachInterrupts();
     lastUpdate = millis();
@@ -244,8 +241,9 @@ void Chassis::moveMotor (Wheel wheel, int speed) {
 }
 
 void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
-
     int motorId = 0;
+
+	// Map wheel enum to motor IDs
     switch (wheel) {
 	case FrontLeft: motorId = MOTOR_FWD_LEFT; break;
 	case FrontRight: motorId = MOTOR_FWD_RIGHT; break;
@@ -254,16 +252,13 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
     }
     int _direction = direction == Forward ? FORWARD : BACKWARD;
 
+	// Update encoder directions according to motor direction
 	EncoderDirections[wheelToEncoder(wheel)] = (_direction == FORWARD) ? 1 : -1;
 
 	if (speed == 0) {
 		_direction = RELEASE;
 	}
 	int _speed = abs(speed);
-
-	#ifdef MOTOR_DEBUG
-	vLog("M" + String(motorId) + " <" + String(direction) + "> := " + String(speed));
-	#endif
 
 	// Mapping according to motor orientation in the chassis
 #ifdef MOVE_MOTORS
@@ -285,7 +280,6 @@ void Chassis::moveMotor (Wheel wheel, Direction direction, int speed) {
 }
 
 int Chassis::heading() const {
-	//return(int)impl->orientation.heading;
 	return (int)impl->smoothedHeading;
 }
 

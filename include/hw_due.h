@@ -5,8 +5,6 @@
 #ifndef _HW_DUE_H
 #define _HW_DUE_H
 
-// HW design: design/robot2.fz
-
 typedef void (*ISR)();
 
 // Pins used on Arduino DUE
@@ -42,6 +40,7 @@ void EncoderISR0() {
     EncoderCounts[0] += EncoderDirections[0];
     EncoderUpdates[0] = millis();
 #ifdef ENCODER_DEBUG
+// Normally logging in an interrupt is a 'no-no', but this is only for encoder troubleshooting cases.
     vLog("Encoder 0" + String(EncoderCounts[0]));
 #endif
 }
@@ -68,7 +67,5 @@ void EncoderISR3() {
 }
 
 const ISR EncoderISRs[] = {EncoderISR0, EncoderISR1, EncoderISR2, EncoderISR3};
-
-// TO ADD: ESP8266
 
 #endif

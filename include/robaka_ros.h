@@ -28,8 +28,12 @@ public:
     void cmdvelCallback(const geometry_msgs::Twist& cmdMsg);
 
 private:
+
+    void publishSonar();
+    void publishIMU();
+    void handleOdometry();
+
     ros::NodeHandle nh;
-    const int ticksPerMeter;
 
     nav_msgs::Odometry odometryMsg;
     ros::Publisher odometryPublisher;
@@ -38,35 +42,36 @@ private:
     ros::Publisher leftRangePublisher;
     ros::Publisher middleRangePublisher;
     ros::Publisher rightRangePublisher;
-    const char* leftSonarFrameId = "sonarleft";
-    const char* middleSonarFrameId = "sonarmiddle";
-    const char* rightSonarFrameId = "sonarright";
 
     std_msgs::Int16 lWheelMsg;
     std_msgs::Int16 rWheelMsg;
     ros::Publisher  lWheelPublisher;
     ros::Publisher  rWheelPublisher;
-    long lWheelLast = 0;
-    long rWheelLast = 0; 
 
     sensor_msgs::Imu imuMsg;
     ros::Publisher imuPublisher;
+
     sensor_msgs::MagneticField magMsg;
     ros::Publisher magPublisher;
 
     geometry_msgs::TransformStamped t;
     tf::TransformBroadcaster broadcaster;
-    const char* baseFrameId = "base_link";
-    const char* imuFrameId = "imu";
 
     std_msgs::Float32 lWheelVelocityMsg;
     std_msgs::Float32 rWheelVelocityMsg;
     ros::Publisher lWheelVelocityPublisher; 
     ros::Publisher rWheelVelocityPublisher;
 
+    const char* leftSonarFrameId = "sonarleft";
+    const char* middleSonarFrameId = "sonarmiddle";
+    const char* rightSonarFrameId = "sonarright";
+    const char* baseFrameId = "base_link";
+    const char* imuFrameId = "imu";    
+
+    long lWheelLast = 0;
+    long rWheelLast = 0; 
     int lWheelTargetRate = 0;
     int rWheelTargetRate = 0;
-
     int leftMotorCmd = 0;
     int rightMotorCmd = 0;
 
@@ -78,22 +83,21 @@ private:
     unsigned long lastUpdate;
     unsigned long lastMotorCmdTime;
     ros::Time lastLoopTs;
+    ros::Time rosTime;
 
     float x = 0, y = 0, z = 0;
     bool blinkState;
-    
-    const float Ku = .15;
-    const float Tu = .1142857143;
 
-    const float Kp = 0.07; // 1; //0.6*Ku;   // 1
-    const float Ki = 0.0; // 0; // 2*Kp/Tu; // 0 
-    const float Kd = 0.001; //0 ; //Kp*Tu/8;  // 0
+    const int ticksPerMeter;
 
+    // PID controller parameters
+    const float Kp = 0.07;
+    const float Ki = 0.0;
+    const float Kd = 0.001;
     SimplePID leftController = SimplePID(Kp, Ki, Kd);
     SimplePID rightController = SimplePID(Kp, Ki, Kd);
 
     int maxMotorSpeedParam;
-
     Chassis& chassis;
 };
 

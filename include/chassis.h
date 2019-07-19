@@ -30,21 +30,19 @@ public:
     bool isInitialized() const { return initialized; }
 
 private:
+    static Chassis* _instance;
+
     Chassis();
     ~Chassis();
-
     static void timerCallback();
     static void imuTimerCallback();
+    int wheelToEncoder(Wheel wheel) const;
 
-    static Chassis* _instance;
 
     unsigned long lastUpdate;
     bool initialized;
-
     class HWImpl;
     HWImpl* impl;
-
-    int wheelToEncoder(Wheel wheel) const;
 };
 
 #endif
